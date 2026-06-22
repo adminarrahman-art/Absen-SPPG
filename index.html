@@ -948,6 +948,43 @@
 
 <!-- ===== JS: GLOBAL STATE & UTILS ===== -->
 <script>
+// ============================================================
+// JEMBATAN KE BACKEND APPS SCRIPT (untuk hosting di GitHub Pages)
+// ============================================================
+// GANTI URL DI BAWAH dengan URL deployment Web App kamu (Deploy > Manage deployments > Web app URL)
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyY7Y95PueL04gYQBLPSRK1T0wVnWKLe-XBtq09l35diV9gO115_GeP8eqjuhqRQWcW/exec';
+
+window.google = window.google || {};
+google.script = google.script || {};
+google.script.run = new Proxy({ _s: null, _f: null }, {
+  get(target, prop) {
+    if (prop === 'withSuccessHandler') {
+      return function(fn) { target._s = fn; return google.script.run; };
+    }
+    if (prop === 'withFailureHandler') {
+      return function(fn) { target._f = fn; return google.script.run; };
+    }
+    return function(...args) {
+      const successFn = target._s, failureFn = target._f;
+      target._s = null; target._f = null;
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight
+        body: JSON.stringify({ fn: prop, args: args })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.error && failureFn) failureFn({ message: data.error });
+          else if (successFn) successFn(data);
+        })
+        .catch(err => {
+          if (failureFn) failureFn({ message: 'Gagal terhubung ke backend: ' + err.message });
+        });
+      return google.script.run;
+    };
+  }
+});
+
 // State
 let APP_STATE = {
   token: null,
