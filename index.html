@@ -3216,67 +3216,6 @@ async function generateIdCardManual() {
     showAlert('Gagal generate ID Card: ' + e);
   }
 }
-    pdf.setTextColor(71, 85, 105);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text((profilData.Jabatan_Divisi || '').toUpperCase(), W / 2, 52.5, { align: 'center' });
-
-    // Divider
-    pdf.setDrawColor(203, 213, 225);
-    pdf.setLineWidth(0.3);
-    pdf.line(6, 57, W - 6, 57);
-
-    // ===== Kotak QR berwarna =====
-    const qrBoxY = 60, qrBoxH = 19;
-    pdf.setFillColor(241, 245, 249);
-    pdf.roundedRect(5, qrBoxY, W - 10, qrBoxH, 2, 2, 'F');
-    pdf.setDrawColor(191, 219, 254);
-    pdf.setLineWidth(0.3);
-    pdf.roundedRect(5, qrBoxY, W - 10, qrBoxH, 2, 2, 'S');
-
-    // QR Code resolusi tinggi (anti buram)
-    const qrDiv = document.createElement('div');
-    new QRCode(qrDiv, { text: profilData.ID_Card_Unik || '', width: 300, height: 300, correctLevel: QRCode.CorrectLevel.H });
-    await new Promise(resolve => setTimeout(resolve, 350));
-    const qrCanvasEl = qrDiv.querySelector('canvas');
-    const qrImgEl = qrDiv.querySelector('img');
-    const qrDataUrl = qrCanvasEl ? qrCanvasEl.toDataURL('image/png') : (qrImgEl ? qrImgEl.src : '');
-
-    const qrSize = 16;
-    pdf.setFillColor(255, 255, 255);
-    pdf.roundedRect(8, qrBoxY + 1.5, qrSize, qrSize, 1.5, 1.5, 'F');
-    if (qrDataUrl) {
-      pdf.addImage(qrDataUrl, 'PNG', 8.8, qrBoxY + 2.3, qrSize - 1.6, qrSize - 1.6);
-    }
-
-    // ID vertikal di samping QR
-    pdf.setFontSize(6.5);
-    pdf.setTextColor(30, 64, 175);
-    pdf.setFont('courier', 'bold');
-    const idText = (profilData.ID_Card_Unik || '').split('').join(' ');
-    pdf.text(idText, 38, qrBoxY + qrBoxH / 2, { align: 'center', angle: 90 });
-
-    // ===== Footer note =====
-    pdf.setFontSize(4.4);
-    pdf.setTextColor(100, 116, 139);
-    pdf.setFont('helvetica', 'normal');
-    const footerText = `ID Card ini adalah tanda pengenal karyawan Satuan Pelayanan Pemenuhan Gizi (SPPG) ${profilData.SPPG || 'DARMARAJA'} yang sah dan berlaku selama menjadi karyawan.`;
-    const splitFooter = pdf.splitTextToSize(footerText, W - 10);
-    pdf.text(splitFooter, W / 2, 80, { align: 'center' });
-
-    pdf.save('ID_Card_' + profilData.ID_Card_Unik + '.pdf');
-    showAlert('ID Card berhasil di-generate', 'success');
-  } catch (e) { showAlert('Gagal generate ID Card: ' + e); }
-}
-
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
 
 // ==================== MANAJEMEN USER ====================
 async function initManajemenUser() {
