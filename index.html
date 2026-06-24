@@ -2648,6 +2648,7 @@ function clearSession() {
   localStorage.removeItem('absensi_token');
   localStorage.removeItem('absensi_user');
   localStorage.removeItem('absensi_device');
+  localStorage.removeItem('absensi_last_page');
   if(AppState.sessionCheckInterval) clearInterval(AppState.sessionCheckInterval);
   AppState.sessionCheckInterval = null;
 }
@@ -2692,6 +2693,9 @@ function navigateTo(page) {
   if(route.type === 'device' && !AppState.device) { page = 'login'; }
   if(page !== 'device-absen' && AppState.device) { page = 'device-absen'; }
   AppState.currentPage = page;
+  if(page !== 'login' && page !== 'register') {
+    localStorage.setItem('absensi_last_page', page);
+  }
   $$('.page').forEach(p => p.classList.add('hidden'));
   const target = document.getElementById(Routes[page].el);
   if(target) target.classList.remove('hidden');
@@ -2738,7 +2742,11 @@ document.addEventListener('DOMContentLoaded', () => {
         AppState.user = { ...AppState.user, ...res.session };
         startSessionCheck();
         applyUserUI();
-        navigateTo('dashboard');
+        const lastPage = localStorage.getItem('absensi_last_page') || 'dashboard';
+        const route = Routes[lastPage];
+        const role = AppState.user.role;
+        const allowed = route && (!route.roles || route.roles.includes(role));
+        navigateTo(allowed ? lastPage : 'dashboard');
       }
     }).catch(() => {
       clearSession();
