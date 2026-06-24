@@ -2190,16 +2190,30 @@
               Proses Payroll
             </button>
           </div>
-          tbody.innerHTML = payrollKaryawan.map(k => `
-    <tr>
-      <td><input type="checkbox" class="payroll-check" data-id="${k.idUser}" onchange="togglePayrollSelect('${k.idUser}')"></td>
-      <td>${escapeHtml(k.namaLengkap)}</td>
-      <td><span class="badge badge-blue">${escapeHtml(k.role||'')}</span></td>
-      <td>${escapeHtml(k.jabatanDivisi)}</td>
-      <td>${escapeHtml(k.sppg)}</td>
-      <td>${formatRupiah(k.gajiHarian)}</td>
-    </tr>
-  `).join('');
+          <div class="flex gap-1 mb-2" style="flex-wrap:wrap;">
+            <input type="text" id="filter-payroll-nama" class="form-input" placeholder="Cari nama..." style="width:180px;" oninput="filterPayrollTable()">
+            <select id="filter-payroll-sppg" class="form-select" style="width:150px;" onchange="filterPayrollTable()">
+              <option value="">Semua SPPG</option>
+            </select>
+            <button class="btn btn-sm btn-outline" onclick="selectAllPayroll(true)">Pilih Semua</button>
+            <button class="btn btn-sm btn-outline" onclick="selectAllPayroll(false)">Batal Semua</button>
+            <span id="payroll-selected-count" class="badge badge-blue" style="align-self:center;">0 dipilih</span>
+          </div>
+          <div class="table-container" style="overflow-x:auto;">
+            <table class="data-table" id="table-payroll" style="min-width:600px;">
+              <thead>
+                <tr>
+                  <th style="width:40px;"><input type="checkbox" id="payroll-check-all" onchange="selectAllPayroll(this.checked)" title="Pilih semua"></th>
+                  <th>Nama</th>
+                  <th>Role</th>
+                  <th>Jabatan/Divisi</th>
+                  <th>SPPG</th>
+                  <th>Gaji Harian</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-payroll"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -4191,34 +4205,106 @@ let payrollKaryawan = [];
 let selectedPayrollKaryawan = [];
 
 async function initPayroll() {
+  const tbody = document.getElementById('tbody-payroll');
+  if(tbody) renderTableSkeleton(tbody, 6, 5);
   try {
     const res = await apiCallWithToken('getKaryawanForPayroll', {});
-    payrollKaryawan = res.karyawan;
+    payrollKaryawan = res.karyawan || [];
+    selectedPayrollKaryawan = [];
+    _populatePayrollSppgFilter();
     renderPayrollTable();
-  } catch(e) { showAlert(e); }
+  } catch(e) {
+    const tbody2 = document.getElementById('tbody-payroll');
+    if(tbody2) renderTableErrorState(tbody2, 6, e, initPayroll);
+    showAlert(e);
+  }
+}
+
+function _populatePayrollSppgFilter() {
+  const sel = document.getElementById('filter-payroll-sppg');
+  if(!sel) return;
+  const sppgSet = new Set(payrollKaryawan.map(k => k.sppg).filter(Boolean));
+  sel.innerHTML = '<option value="">Semua SPPG</option>' +
+    Array.from(sppgSet).sort().map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+}
+
+function filterPayrollTable() {
+  const nama = (document.getElementById('filter-payroll-nama')?.value || '').toLowerCase();
+  const sppg = document.getElementById('filter-payroll-sppg')?.value || '';
+  const filtered = payrollKaryawan.filter(k => {
+    const matchNama = !nama || (k.namaLengkap || '').toLowerCase().includes(nama);
+    const matchSppg = !sppg || k.sppg === sppg;
+    return matchNama && matchSppg;
+  });
+  _renderPayrollRows(filtered);
 }
 
 function renderPayrollTable() {
-  const tbody = $('#table-payroll tbody');
-  tbody.innerHTML = payrollKaryawan.map(k => `
-    <tr>
-      <td data-label="Pilih"><input type="checkbox" class="payroll-check" data-id="${k.idUser}" onchange="togglePayrollSelect('${k.idUser}')"></td>
-      <td data-label="Nama">${escapeHtml(k.namaLengkap)}</td>
-      <td data-label="Jabatan">${escapeHtml(k.jabatanDivisi)}</td>
-      <td data-label="SPPG">${escapeHtml(k.sppg)}</td>
-      <td data-label="Gaji Harian">${formatRupiah(k.gajiHarian)}</td>
-    </tr>
-  `).join('');
+  _populatePayrollSppgFilter();
+  _renderPayrollRows(payrollKaryawan);
 }
 
-function togglePayrollSelect(idUser) {
+function _renderPayrollRows(list) {
+  const tbody = document.getElementById('tbody-payroll');
+  if(!tbody) return;
+  if(!list || list.length === 0) {
+    renderTableEmptyState(tbody, 6, '👥', 'Belum ada karyawan', 'Tidak ada karyawan yang sesuai filter atau belum ada karyawan aktif dengan role USER.');
+    updatePayrollSelectedCount();
+    return;
+  }
+  tbody.innerHTML = list.map(k => {
+    const checked = selectedPayrollKaryawan.includes(k.idUser) ? 'checked' : '';
+    return `<tr id="payroll-row-${k.idUser}">
+      <td data-label="Pilih" style="text-align:center;">
+        <input type="checkbox" class="payroll-check" data-id="${escapeHtml(k.idUser)}" ${checked}
+          onchange="togglePayrollSelect('${escapeHtml(k.idUser)}', this.checked)">
+      </td>
+      <td data-label="Nama" style="font-weight:500;">${escapeHtml(k.namaLengkap)}</td>
+      <td data-label="Role"><span class="badge badge-blue">${escapeHtml(k.role||'USER')}</span></td>
+      <td data-label="Jabatan">${escapeHtml(k.jabatanDivisi||'-')}</td>
+      <td data-label="SPPG">${escapeHtml(k.sppg||'-')}</td>
+      <td data-label="Gaji Harian" style="font-weight:600;">${formatRupiah(k.gajiHarian)}</td>
+    </tr>`;
+  }).join('');
+  updatePayrollSelectedCount();
+}
+
+function togglePayrollSelect(idUser, checked) {
   const idx = selectedPayrollKaryawan.indexOf(idUser);
-  if(idx >= 0) selectedPayrollKaryawan.splice(idx, 1);
-  else selectedPayrollKaryawan.push(idUser);
+  if(checked && idx < 0) selectedPayrollKaryawan.push(idUser);
+  else if(!checked && idx >= 0) selectedPayrollKaryawan.splice(idx, 1);
+  updatePayrollSelectedCount();
+  // Sync checkbox "pilih semua"
+  const allChecks = document.querySelectorAll('.payroll-check');
+  const allChk = document.getElementById('payroll-check-all');
+  if(allChk && allChecks.length > 0) {
+    const checkedCount = Array.from(allChecks).filter(c => c.checked).length;
+    allChk.checked = checkedCount === allChecks.length;
+    allChk.indeterminate = checkedCount > 0 && checkedCount < allChecks.length;
+  }
+}
+
+function selectAllPayroll(checked) {
+  const allChecks = document.querySelectorAll('.payroll-check');
+  allChecks.forEach(cb => {
+    cb.checked = checked;
+    const idUser = cb.dataset.id;
+    const idx = selectedPayrollKaryawan.indexOf(idUser);
+    if(checked && idx < 0) selectedPayrollKaryawan.push(idUser);
+    else if(!checked && idx >= 0) selectedPayrollKaryawan.splice(idx, 1);
+  });
+  const allChk = document.getElementById('payroll-check-all');
+  if(allChk) { allChk.checked = checked; allChk.indeterminate = false; }
+  updatePayrollSelectedCount();
+}
+
+function updatePayrollSelectedCount() {
+  const el = document.getElementById('payroll-selected-count');
+  if(el) el.textContent = selectedPayrollKaryawan.length + ' dipilih';
 }
 
 function showPayrollModal() {
-  if(selectedPayrollKaryawan.length === 0) { showAlert('Pilih minimal 1 karyawan'); return; }
+  if(selectedPayrollKaryawan.length === 0) { showAlert('Pilih minimal 1 karyawan untuk diproses payroll-nya', 'warning'); return; }
   $('#modal-payroll').classList.add('show');
   setTimeout(() => {
     const canvas = document.getElementById('signature-pad');
@@ -4226,22 +4312,82 @@ function showPayrollModal() {
       AppState.signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgb(250,250,250)' });
     }
   }, 300);
+
+  // Set default periode: bulan berjalan
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+  if(!$('#payroll-mulai').value) $('#payroll-mulai').value = `${y}-${m}-01`;
+  if(!$('#payroll-akhir').value) $('#payroll-akhir').value = `${y}-${m}-${String(lastDay).padStart(2,'0')}`;
+
+  _renderPayrollKaryawanInputs();
+
+  // Re-render input saat periode berubah
+  $('#payroll-mulai').onchange = _renderPayrollKaryawanInputs;
+  $('#payroll-akhir').onchange = _renderPayrollKaryawanInputs;
+}
+
+async function _renderPayrollKaryawanInputs() {
   const container = $('#payroll-karyawan-inputs');
+  if(!container) return;
+
+  const periodeMulai = $('#payroll-mulai').value;
+  const periodeAkhir = $('#payroll-akhir').value;
+
+  container.innerHTML = `<div class="text-muted" style="padding:1rem; text-align:center;">
+    <div class="spinner" style="width:28px;height:28px;border-width:3px;margin:0 auto 0.5rem;"></div>
+    Menghitung hari kerja${periodeMulai && periodeAkhir ? ' ('+periodeMulai+' s/d '+periodeAkhir+')' : ''}...
+  </div>`;
+
+  // Ambil data absensi per karyawan terpilih jika periode sudah diisi
+  let absensiPerUser = {};
+  if(periodeMulai && periodeAkhir) {
+    try {
+      const res = await apiCallWithToken('getAbsensiForPayrollPreview', {
+        periodeMulai, periodeAkhir,
+        idUserList: selectedPayrollKaryawan
+      });
+      absensiPerUser = res.absensiPerUser || {};
+    } catch(e) {
+      // fallback: tidak ada preview hari kerja, tetap tampilkan form
+    }
+  }
+
   container.innerHTML = selectedPayrollKaryawan.map(id => {
     const k = payrollKaryawan.find(x => x.idUser === id);
+    if(!k) return '';
+    const info = absensiPerUser[id] || {};
+    const hariKerja = info.jumlahHariKerja != null ? info.jumlahHariKerja : '?';
+    const gajiHarian = parseFloat(k.gajiHarian) || 0;
+    const estimasiGaji = typeof hariKerja === 'number' ? formatRupiah(hariKerja * gajiHarian) : '-';
+    const detailHari = info.tanggalKerja && info.tanggalKerja.length > 0
+      ? `<div class="text-muted" style="font-size:0.78rem; margin-top:0.35rem;">
+           Tanggal kerja: ${info.tanggalKerja.join(', ')}
+         </div>`
+      : (periodeMulai && periodeAkhir
+          ? '<div class="text-muted" style="font-size:0.78rem; margin-top:0.35rem;">Belum ada absen datang+pulang di periode ini</div>'
+          : '<div class="text-muted" style="font-size:0.78rem; margin-top:0.35rem;">Isi periode untuk preview hari kerja</div>');
+
     return `
-      <div class="card" style="margin-bottom:0.75rem; padding:1.25rem;">
-        <div style="font-weight:600; margin-bottom:0.75rem; font-size:1rem;">${escapeHtml(k.namaLengkap)} (${escapeHtml(k.jabatanDivisi)})</div>
-        <div class="form-row form-row-3">
-          <div class="form-group"><label class="form-label">Bonus (Rp)</label><input class="form-input payroll-bonus" data-id="${id}" type="number" value="0"></div>
-          <div class="form-group"><label class="form-label">Lembur (Rp)</label><input class="form-input payroll-lembur" data-id="${id}" type="number" value="0"></div>
-          <div class="form-group"><label class="form-label">Potongan (Rp)</label><input class="form-input payroll-potongan" data-id="${id}" type="number" value="0"></div>
+      <div class="card" style="margin-bottom:0.875rem; padding:1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.875rem;">
+          <div>
+            <div style="font-weight:700; font-size:1rem;">${escapeHtml(k.namaLengkap)}</div>
+            <div style="font-size:0.8125rem; color:var(--text-secondary);">${escapeHtml(k.jabatanDivisi||'')} &bull; ${escapeHtml(k.sppg||'')}</div>
+            ${detailHari}
+          </div>
+          <div style="text-align:right; flex-shrink:0;">
+            <div style="font-size:0.8rem; color:var(--text-secondary);">Hari Kerja</div>
+            <div style="font-size:1.5rem; font-weight:800; color:var(--primary);" id="preview-hari-${escapeHtml(id)}">${hariKerja}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">× ${formatRupiah(gajiHarian)}</div>
+            <div style="font-size:0.875rem; font-weight:600; color:var(--success);" id="preview-estimasi-${escapeHtml(id)}">${estimasiGaji}</div>
+          </div>
         </div>
-        <div class="form-group"><label class="form-label">Keterangan Potongan</label><input class="form-input payroll-keterangan" data-id="${id}" placeholder="Opsional"></div>
-      </div>
-    `;
-  }).join('');
-}
+        <div class="form-row form-row-3">
+          <div class="form-group">
+            <label class="form-label">Bonus (Rp)</label>
+            <input
 
 async function acceptPayroll() {
   const periodeMulai = $('#payroll-mulai').value;
