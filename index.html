@@ -1506,6 +1506,79 @@
       opacity: 0.5;
     }
 
+    .empty-state-action {
+      margin-top: 1.25rem;
+    }
+
+    /* ==================== SKELETON LOADING ==================== */
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 37%, #e2e8f0 63%);
+      background-size: 400% 100%;
+      animation: skeletonShimmer 1.4s ease-in-out infinite;
+      border-radius: var(--radius-sm);
+    }
+
+    @keyframes skeletonShimmer {
+      0% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .skeleton-row td { padding: 0.875rem 1rem; }
+    .skeleton-line { height: 14px; width: 100%; }
+    .skeleton-line.short { width: 60%; }
+    .skeleton-line.tiny { width: 36%; }
+
+    .skeleton-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .skeleton-card-img { width: 100%; height: 180px; }
+
+    .skeleton-card-body {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+
+    /* ==================== ERROR STATE (RETRY) ==================== */
+    .error-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-secondary);
+    }
+
+    .error-state-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: var(--danger);
+    }
+
+    .error-state-msg {
+      font-size: 0.875rem;
+      margin-bottom: 1.25rem;
+      color: var(--text-muted);
+    }
+
+    /* ==================== TOAST UNDO ==================== */
+    .alert-undo-btn {
+      background: rgba(0,0,0,0.08);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0.25rem 0.75rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      color: inherit;
+      transition: var(--transition);
+    }
+
+    .alert-undo-btn:hover { background: rgba(0,0,0,0.15); }
+
     @supports (padding-bottom: env(safe-area-inset-bottom)) {
       .device-ui { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
       #content-area { padding-bottom: max(1.25rem, env(safe-area-inset-bottom)); }
@@ -2279,17 +2352,40 @@ function formatDate(d) { if(!d) return '-'; const date = new Date(d); return dat
 function formatDateTime(d) { if(!d) return '-'; const date = new Date(d); return date.toLocaleDateString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}); }
 function formatRupiah(n) { return 'Rp ' + (parseFloat(n)||0).toLocaleString('id-ID'); }
 const ALERT_ICONS = { success: ICONS.success, danger: ICONS.danger, warning: ICONS.warning, info: ICONS.info };
-function showAlert(msg, type='danger') {
+const MAX_ALERTS = 3;
+function showAlert(msg, type='danger', opts) {
   const box = $('#alert-box');
   if(!box) return;
-  const id = 'alert-' + Date.now();
+  const options = opts || {};
+  const duration = options.duration || 5000;
+
+  // Batasi maksimal 3 alert tampil bersamaan agar tidak menumpuk menutupi layar
+  const existing = box.querySelectorAll('.alert');
+  if(existing.length >= MAX_ALERTS) {
+    existing[0].remove();
+  }
+
+  const id = 'alert-' + Date.now() + '-' + Math.floor(Math.random()*1000);
   const icon = ALERT_ICONS[type] || ICONS.info;
   const div = document.createElement('div');
   div.id = id;
   div.className = `alert alert-${type}`;
-  div.innerHTML = `<span class="alert-icon">${icon}</span><div class="alert-body"><div class="alert-msg">${msg}</div></div><div class="alert-progress"></div>`;
+  const undoHtml = options.onUndo ? `<button class="alert-undo-btn" id="${id}-undo">${escapeHtml(options.undoLabel || 'Urungkan')}</button>` : '';
+  div.innerHTML = `<span class="alert-icon">${icon}</span><div class="alert-body"><div class="alert-msg">${msg}</div>${undoHtml}</div><div class="alert-progress" style="animation-duration:${duration}ms;"></div>`;
   box.appendChild(div);
-  setTimeout(() => { const el = document.getElementById(id); if(el) el.remove(); }, 5000);
+
+  if(options.onUndo) {
+    const undoBtn = document.getElementById(id + '-undo');
+    if(undoBtn) {
+      undoBtn.addEventListener('click', () => {
+        options.onUndo();
+        const el = document.getElementById(id);
+        if(el) el.remove();
+      });
+    }
+  }
+
+  setTimeout(() => { const el = document.getElementById(id); if(el) el.remove(); }, duration);
 }
 let _loadingCount = 0;
 function showLoading(show=true) {
@@ -2304,6 +2400,88 @@ function showLoading(show=true) {
   }
 }
 function escapeHtml(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
+
+// ==================== SKELETON / EMPTY / ERROR STATE HELPERS ====================
+function renderTableSkeleton(tbody, cols, rows=5) {
+  if(!tbody) return;
+  let html = '';
+  for(let r = 0; r < rows; r++) {
+    html += '<tr class="skeleton-row">';
+    for(let c = 0; c < cols; c++) {
+      const widthClass = c === 0 ? '' : (c % 3 === 0 ? 'short' : 'tiny');
+      html += `<td><div class="skeleton-shimmer skeleton-line ${widthClass}"></div></td>`;
+    }
+    html += '</tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+function renderTableEmptyState(tbody, colspan, icon, title, desc, actionLabel, actionFn) {
+  if(!tbody) return;
+  const actionHtml = actionLabel ? `<div class="empty-state-action"><button class="btn btn-sm btn-outline" id="empty-state-action-btn">${escapeHtml(actionLabel)}</button></div>` : '';
+  tbody.innerHTML = `<tr><td colspan="${colspan}">
+    <div class="empty-state">
+      <div class="empty-state-icon">${icon}</div>
+      <div style="font-weight:600; margin-bottom:0.35rem; color:var(--text);">${escapeHtml(title)}</div>
+      <div style="font-size:0.875rem;">${escapeHtml(desc)}</div>
+      ${actionHtml}
+    </div>
+  </td></tr>`;
+  if(actionFn) {
+    const btn = document.getElementById('empty-state-action-btn');
+    if(btn) btn.addEventListener('click', actionFn);
+  }
+}
+
+function renderTableErrorState(tbody, colspan, err, retryFn) {
+  if(!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="${colspan}">
+    <div class="error-state">
+      <div class="error-state-icon">${ICONS.danger}</div>
+      <div style="font-weight:600; margin-bottom:0.35rem; color:var(--text);">Gagal memuat data</div>
+      <div class="error-state-msg">${escapeHtml(typeof err === 'string' ? err : (err && err.message) || 'Terjadi kesalahan saat menghubungi server')}</div>
+      <button class="btn btn-sm btn-primary" id="error-state-retry-btn">Coba Lagi</button>
+    </div>
+  </td></tr>`;
+  const btn = document.getElementById('error-state-retry-btn');
+  if(btn && retryFn) btn.addEventListener('click', retryFn);
+}
+
+function renderGridSkeleton(container, count=6) {
+  if(!container) return;
+  let html = '';
+  for(let i = 0; i < count; i++) {
+    html += `<div class="skeleton-card">
+      <div class="skeleton-shimmer skeleton-card-img"></div>
+      <div class="skeleton-card-body">
+        <div class="skeleton-shimmer skeleton-line short"></div>
+        <div class="skeleton-shimmer skeleton-line tiny"></div>
+      </div>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function renderGridEmptyState(container, icon, title, desc) {
+  if(!container) return;
+  container.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;">
+    <div class="empty-state-icon">${icon}</div>
+    <div style="font-weight:600; margin-bottom:0.35rem; color:var(--text);">${escapeHtml(title)}</div>
+    <div style="font-size:0.875rem;">${escapeHtml(desc)}</div>
+  </div>`;
+}
+
+function renderGridErrorState(container, err, retryFn) {
+  if(!container) return;
+  container.innerHTML = `<div class="error-state" style="grid-column: 1 / -1;">
+    <div class="error-state-icon">${ICONS.danger}</div>
+    <div style="font-weight:600; margin-bottom:0.35rem; color:var(--text);">Gagal memuat data</div>
+    <div class="error-state-msg">${escapeHtml(typeof err === 'string' ? err : (err && err.message) || 'Terjadi kesalahan saat menghubungi server')}</div>
+    <button class="btn btn-sm btn-primary" id="grid-error-retry-btn">Coba Lagi</button>
+  </div>`;
+  const btn = document.getElementById('grid-error-retry-btn');
+  if(btn && retryFn) btn.addEventListener('click', retryFn);
+}
 
 // ==================== STATE ====================
 const AppState = {
@@ -3341,24 +3519,78 @@ async function generateIdCardManual() {
 
 // ==================== MANAJEMEN USER ====================
 async function initManajemenUser() {
+  const container = $('#user-grid');
+  renderGridSkeleton(container, 6);
   try {
     const res = await apiCallWithToken('getAllUsers', {});
     renderUserGrid(res.users);
-  } catch(e) { showAlert(e); }
+  } catch(e) {
+    renderGridErrorState(container, e, initManajemenUser);
+  }
 }
 
 function renderUserGrid(users) {
   const container = $('#user-grid');
+  if(!users || users.length === 0) {
+    renderGridEmptyState(container, ICONS.manajemen, 'Belum ada user terdaftar', 'User baru akan muncul di sini setelah registrasi karyawan berhasil.');
+    return;
+  }
   container.innerHTML = users.map(u => `
     <div class="user-card" onclick="showUserDetail('${u.ID_User}')">
       <img src="${u.URL_Foto_Profil || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}" class="user-card-img" onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'">
       <div class="user-card-body">
         <div class="user-card-name">${escapeHtml(u.Nama_Lengkap)}</div>
         <div class="user-card-role">${escapeHtml(u.Jabatan_Divisi)} &bull; ${escapeHtml(u.SPPG)}</div>
-        <span class="badge ${isActive(u.Status_Aktif)?'badge-green':'badge-red'}">${isActive(u.Status_Aktif)?'Aktif':'Nonaktif'}</span>
+        <div class="flex flex-between items-center" style="margin-top:0.5rem;">
+          <span class="badge ${isActive(u.Status_Aktif)?'badge-green':'badge-red'}" id="status-badge-${u.ID_User}">${isActive(u.Status_Aktif)?'Aktif':'Nonaktif'}</span>
+          <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); quickToggleUserStatus('${u.ID_User}', ${isActive(u.Status_Aktif)}, '${escapeHtml(u.Nama_Lengkap)}')">
+            ${isActive(u.Status_Aktif) ? 'Nonaktifkan' : 'Aktifkan'}
+          </button>
+        </div>
       </div>
     </div>
   `).join('');
+}
+
+// Toggle status user dengan jeda 5 detik + tombol Undo,
+// agar admin tidak salah klik mengubah akses karyawan secara permanen
+function quickToggleUserStatus(idUser, currentlyActive, namaLengkap) {
+  const newStatus = !currentlyActive;
+  const badge = document.getElementById('status-badge-' + idUser);
+  if(badge) {
+    badge.textContent = newStatus ? 'Aktif' : 'Nonaktif';
+    badge.className = 'badge ' + (newStatus ? 'badge-green' : 'badge-red');
+  }
+  let undone = false;
+  const timeoutId = setTimeout(async () => {
+    if(undone) return;
+    try {
+      await apiCallWithToken('toggleUserStatus', { idUser, status: newStatus });
+    } catch(e) {
+      showAlert('Gagal memperbarui status: ' + e);
+      if(badge) {
+        badge.textContent = currentlyActive ? 'Aktif' : 'Nonaktif';
+        badge.className = 'badge ' + (currentlyActive ? 'badge-green' : 'badge-red');
+      }
+    }
+  }, 5000);
+
+  showAlert(
+    `${escapeHtml(namaLengkap)} akan di-${newStatus ? 'aktifkan' : 'nonaktifkan'}`,
+    'warning',
+    {
+      duration: 5000,
+      undoLabel: 'Urungkan',
+      onUndo: () => {
+        undone = true;
+        clearTimeout(timeoutId);
+        if(badge) {
+          badge.textContent = currentlyActive ? 'Aktif' : 'Nonaktif';
+          badge.className = 'badge ' + (currentlyActive ? 'badge-green' : 'badge-red');
+        }
+      }
+    }
+  );
 }
 
 let selectedUserId = null;
@@ -3439,9 +3671,14 @@ async function saveRegisterDevice() {
 
 // ==================== DATA KARYAWAN ====================
 async function initDataKaryawan() {
+  const tbody = $('#table-karyawan tbody');
+  renderTableSkeleton(tbody, 8, 5);
   try {
     const res = await apiCallWithToken('getDataKaryawan', {});
-    const tbody = $('#table-karyawan tbody');
+    if(!res.karyawan || res.karyawan.length === 0) {
+      renderTableEmptyState(tbody, 8, ICONS.karyawan, 'Belum ada data karyawan', 'Karyawan akan muncul di sini setelah registrasi berhasil.');
+      return;
+    }
     tbody.innerHTML = res.karyawan.map(k => `
       <tr>
         <td data-label="Nama">${escapeHtml(k.namaLengkap)}</td>
@@ -3454,7 +3691,9 @@ async function initDataKaryawan() {
         <td data-label="Gaji Harian">${formatRupiah(k.gajiHarian)}</td>
       </tr>
     `).join('');
-  } catch(e) { showAlert(e); }
+  } catch(e) {
+    renderTableErrorState(tbody, 8, e, initDataKaryawan);
+  }
 }
 
 // ==================== PAYROLL ====================
@@ -3546,9 +3785,14 @@ async function acceptPayroll() {
 
 // ==================== MY PAYROLL ====================
 async function initMyPayroll() {
+  const tbody = $('#table-my-payroll tbody');
+  renderTableSkeleton(tbody, 4, 4);
   try {
     const res = await apiCallWithToken('getMyPayroll', {});
-    const tbody = $('#table-my-payroll tbody');
+    if(!res.payroll || res.payroll.length === 0) {
+      renderTableEmptyState(tbody, 4, ICONS.mypayroll, 'Belum ada slip gaji', 'Slip gaji akan muncul di sini setelah payroll diproses Admin/Akuntan.', 'Lihat Absensi Saya', () => navigateTo('absen-manual'));
+      return;
+    }
     tbody.innerHTML = res.payroll.map(p => `
       <tr>
         <td data-label="Periode">${formatDate(p.periodeMulai)} - ${formatDate(p.periodeAkhir)}</td>
@@ -3559,19 +3803,29 @@ async function initMyPayroll() {
         </td>
       </tr>
     `).join('');
-  } catch(e) { showAlert(e); }
+  } catch(e) {
+    renderTableErrorState(tbody, 4, e, initMyPayroll);
+  }
 }
 
 // ==================== ABSENSI ====================
 async function initAbsensi() {
+  const tbody = $('#table-absensi tbody');
+  renderTableSkeleton(tbody, 8, 6);
   try {
     const res = await apiCallWithToken('getAbsensiData', {});
     renderAbsensiTable(res.absensi);
-  } catch(e) { showAlert(e); }
+  } catch(e) {
+    renderTableErrorState(tbody, 8, e, initAbsensi);
+  }
 }
 
 function renderAbsensiTable(data) {
   const tbody = $('#table-absensi tbody');
+  if(!data || data.length === 0) {
+    renderTableEmptyState(tbody, 8, ICONS.absensi, 'Belum ada data absensi', 'Coba ubah filter tanggal/SPPG/Jabatan, atau tunggu karyawan melakukan absen.');
+    return;
+  }
   tbody.innerHTML = data.map(a => `
     <tr>
       <td data-label="Tanggal">${formatDate(a.Tanggal)}</td>
@@ -3918,14 +4172,22 @@ function showAbsenResult(success, message) {
 
 // ==================== AUDIT LOG ====================
 async function initAuditLog() {
+  const tbody = $('#table-audit tbody');
+  renderTableSkeleton(tbody, 4, 6);
   try {
     const res = await apiCallWithToken('getAuditLog', {});
     renderAuditLog(res.logs);
-  } catch(e) { showAlert(e); }
+  } catch(e) {
+    renderTableErrorState(tbody, 4, e, initAuditLog);
+  }
 }
 
 function renderAuditLog(logs) {
   const tbody = $('#table-audit tbody');
+  if(!logs || logs.length === 0) {
+    renderTableEmptyState(tbody, 4, ICONS.audit, 'Belum ada catatan aktivitas', 'Aktivitas pengguna dan sistem akan tercatat di sini secara otomatis.');
+    return;
+  }
   tbody.innerHTML = logs.map(l => `
     <tr>
       <td data-label="Waktu">${formatDateTime(l.Waktu)}</td>
