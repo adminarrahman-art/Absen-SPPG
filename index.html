@@ -1492,9 +1492,24 @@
       flex-shrink: 0;
     }
 
+    .profile-trigger .profile-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1.25;
+    }
+
     .profile-trigger .profile-name {
       font-size: 0.875rem;
-      color: var(--text-secondary);
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .profile-trigger .profile-role {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
       font-weight: 500;
     }
 
@@ -1960,13 +1975,6 @@
       </div>
       <span class="sidebar-brand-text">Sistem Absensi</span>
     </div>
-    <div class="sidebar-user">
-      <img id="sidebar-foto" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Foto">
-      <div>
-        <div class="name" id="sidebar-nama">User</div>
-        <div class="role" id="sidebar-role">Role</div>
-      </div>
-    </div>
     <nav class="nav-section">
       <div class="nav-item" data-page="dashboard">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -2015,7 +2023,10 @@
         <div class="profile-dropdown-wrap">
           <button id="profile-trigger" class="profile-trigger">
             <img id="header-foto" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Foto">
-            <span id="header-nama" class="profile-name"></span>
+            <div class="profile-info">
+              <span id="header-nama" class="profile-name"></span>
+              <span id="header-role" class="profile-role"></span>
+            </div>
             <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           <div id="profile-dropdown-menu" class="profile-dropdown-menu">
@@ -3503,7 +3514,6 @@ async function saveUpdateFotoProfil() {
     if(res.url && AppState.user) {
       AppState.user.fotoProfil = res.url;
       localStorage.setItem('absensi_user', JSON.stringify(AppState.user));
-      $('#sidebar-foto').src = res.url;
       const headerFoto = $('#header-foto');
       if(headerFoto) headerFoto.src = res.url;
     }
@@ -4786,17 +4796,14 @@ async function restartQrScanner(newCameraId) {
 function applyUserUI() {
   if(!AppState.user && !AppState.device) return;
   if(AppState.device) {
-    $('#sidebar-nama').textContent = AppState.device.namaDevice || 'Device';
-    $('#sidebar-role').textContent = 'DEVICE ABSEN';
     $('#header-nama').textContent = AppState.device.namaDevice || '';
+    $('#header-role').textContent = 'DEVICE ABSEN';
     $$('.nav-item[data-page]').forEach(n => n.classList.add('hidden'));
     return;
   }
-  $('#sidebar-nama').textContent = AppState.user.nama || '-';
-  $('#sidebar-role').textContent = AppState.user.role || '-';
   $('#header-nama').textContent = AppState.user.nama || '';
+  $('#header-role').textContent = AppState.user.role || '';
   if(AppState.user.fotoProfil) {
-    $('#sidebar-foto').src = AppState.user.fotoProfil;
     const headerFoto = $('#header-foto');
     if(headerFoto) headerFoto.src = AppState.user.fotoProfil;
   }
