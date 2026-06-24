@@ -3072,8 +3072,8 @@ function renderProfil() {
       <div class="card">
         <div class="card-header"><div class="card-title">${ICONS.image} ID Card Digital</div></div>
         <div id="id-card-preview-area" style="margin-bottom:1.25rem;"></div>
-        <a class="btn btn-primary btn-block" id="btn-download-idcard" href="${u.URL_ID_Card_PDF || '#'}" target="_blank" rel="noopener" ${!u.URL_ID_Card_PDF ? 'style="opacity:0.6; pointer-events:none;"' : ''}>
-          ${ICONS.download} Download ID Card (PDF)
+        <a class="btn btn-outline btn-block" id="btn-download-qrpdf" href="${u.Link_PDF_QR || '#'}" target="_blank" rel="noopener" style="margin-top:0.625rem; ${!u.Link_PDF_QR ? 'opacity:0.6; pointer-events:none;' : ''}">
+          ${ICONS.download} Download QR Code (PDF)
         </a>
       </div>
     </div>
