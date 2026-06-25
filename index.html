@@ -3498,6 +3498,7 @@ async function loadFaceApiModels() {
     await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
     await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
     await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
     AppState.modelsLoaded = true;
   } catch(e) {
     console.error('Face API load error:', e);
@@ -3527,24 +3528,11 @@ async function captureFace() {
     }
     const guide = camContainer.querySelector('.face-guide');
 
-    // --- Liveness state: tengok kanan → tengok kiri → kembali depan ---
+    // --- Liveness state: hadap kamera (center) → senyum → selesai ---
     const livenessState = {
-      phase: 'center',      // 'center' → 'right' → 'left' → 'done'
+      phase: 'center',      // 'center' → 'smile' → 'done'
       capturedDescriptor: null,
     };
-
-    // Hitung yaw ratio: posisi hidung relatif terhadap garis mata
-    // Positif = hidung ke kanan layar (karena mirror, berarti user tengok kiri)
-    // Negatif = hidung ke kiri layar (user tengok kanan)
-    function getNoseYawRatio(landmarks) {
-      const pts = landmarks.positions;
-      const lx  = (pts[36].x + pts[39].x) / 2; // center mata kiri
-      const rx  = (pts[42].x + pts[45].x) / 2; // center mata kanan
-      const nx  = pts[30].x;                    // ujung hidung
-      const eyeCX = (lx + rx) / 2;
-      const faceW = Math.abs(rx - lx) + 1;
-      return (nx - eyeCX) / faceW; // -0.5 s/d +0.5
-    }
 
     function isFaceCentered(detection, videoW, videoH) {
       const box = detection.detection.box;
@@ -3555,8 +3543,8 @@ async function captureFace() {
              box.width > videoW * 0.18 && box.width < videoW * 0.88;
     }
 
-    // Ambang yaw: > +0.12 = tengok kanan (dari sudut pandang user), < -0.12 = tengok kiri
-    const YAW_THRESHOLD = 0.13;
+    // Ambang batas akurasi deteksi senyum (0 - 1). Semakin tinggi = makin ketat.
+    const SMILE_THRESHOLD = 0.70;
     let attempts = 0;
     const MAX_ATTEMPTS = 300; // ~150 detik
 
@@ -3574,7 +3562,8 @@ async function captureFace() {
       const detections = await faceapi
         .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
         .withFaceLandmarks()
-        .withFaceDescriptor();
+        .withFaceDescriptor()
+        .withFaceExpressions();
 
       if(!detections) {
         livenessState.phase = 'center';
@@ -3587,11 +3576,7 @@ async function captureFace() {
       const vW = video.videoWidth || 640;
       const vH = video.videoHeight || 480;
       const centered = isFaceCentered(detections, vW, vH);
-      const yaw = getNoseYawRatio(detections.landmarks);
-
-      // Karena video di-mirror (scaleX(-1)), kiri/kanan terbalik di layar:
-      // yaw > +YAW_THRESHOLD → hidung ke kanan di frame asli → user tengok KANAN
-      // yaw < -YAW_THRESHOLD → hidung ke kiri di frame asli  → user tengok KIRI
+      const smileScore = detections.expressions ? detections.expressions.happy : 0;
 
       if(!centered && livenessState.phase === 'center') {
         if(guide) guide.className = 'face-guide liveness-warn';
@@ -3605,23 +3590,8 @@ async function captureFace() {
         case 'center':
           if(guide) guide.className = 'face-guide liveness-warn';
           statusBox.className = 'liveness-status-box warn';
-          statusBox.textContent = '➡ Tengok ke KANAN';
-          if(yaw < -YAW_THRESHOLD) livenessState.phase = 'right';
-          break;
-
-        case 'right':
-          if(guide) guide.className = 'face-guide liveness-warn';
-          statusBox.className = 'liveness-status-box warn';
-          statusBox.textContent = '⬅ Sekarang tengok ke KIRI';
-          if(yaw > YAW_THRESHOLD) livenessState.phase = 'left';
-          break;
-
-        case 'left':
-          if(guide) guide.className = 'face-guide liveness-warn';
-          statusBox.className = 'liveness-status-box warn';
-          statusBox.textContent = '🔄 Kembali hadap ke depan...';
-          // Kembali ke tengah → liveness selesai
-          if(Math.abs(yaw) < YAW_THRESHOLD * 0.6) livenessState.phase = 'done';
+          statusBox.textContent = '🙂 Lihat kamera dan tersenyum';
+          if(smileScore >= SMILE_THRESHOLD) livenessState.phase = 'done';
           break;
 
         case 'done':
@@ -4326,34 +4296,12 @@ async function startWajahCapture(videoId, canvasId, statusId) {
     const guide = camContainer ? camContainer.querySelector('.face-guide') : null;
     const statusEl = $(`#${statusId}`);
 
-    function getEAR(eye) {
-      const A = Math.hypot(eye[1].x-eye[5].x, eye[1].y-eye[5].y);
-      const B = Math.hypot(eye[2].x-eye[4].x, eye[2].y-eye[4].y);
-      const C = Math.hypot(eye[0].x-eye[3].x, eye[0].y-eye[3].y);
-      return (A+B)/(2*C);
-    }
-    function isFrontal(landmarks) {
-      const pts = landmarks.positions;
-      const lx = (pts[36].x+pts[39].x)/2, rx = (pts[42].x+pts[45].x)/2;
-      const nx = pts[30].x, cx = (lx+rx)/2, fw = Math.abs(rx-lx);
-      return Math.abs(nx-cx)/(fw+1) < 0.18;
-    }
-    function isFaceCentered(det, vW, vH) {
-      const b = det.detection.box;
-      const cx = b.x+b.width/2, cy = b.y+b.height/2;
-      return Math.abs(cx-vW/2)<vW*0.22 && Math.abs(cy-vH/2)<vH*0.22 && b.width>vW*0.20 && b.width<vW*0.85;
-    }
-
-    const YAW_THR = 0.13;
-    function getNoseYaw(lm) {
-      const p=lm.positions, lx=(p[36].x+p[39].x)/2, rx=(p[42].x+p[45].x)/2;
-      return (p[30].x-(lx+rx)/2)/(Math.abs(rx-lx)+1);
-    }
-    function isFaceCenteredW(det,vW,vH) {
+    ffunction isFaceCenteredW(det,vW,vH) {
       const b=det.detection.box,cx=b.x+b.width/2,cy=b.y+b.height/2;
       return Math.abs(cx-vW/2)<vW*0.25&&Math.abs(cy-vH/2)<vH*0.25&&b.width>vW*0.18&&b.width<vW*0.88;
     }
 
+    const SMILE_THR = 0.70;
     let wPhase='center', captured=false, attempts=0;
 
     const interval = setInterval(async () => {
@@ -4367,7 +4315,7 @@ async function startWajahCapture(videoId, canvasId, statusId) {
       }
       const det = await faceapi
         .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize:416, scoreThreshold:0.5}))
-        .withFaceLandmarks().withFaceDescriptor();
+        .withFaceLandmarks().withFaceDescriptor().withFaceExpressions();
 
       if(!det) {
         wPhase='center';
@@ -4378,7 +4326,7 @@ async function startWajahCapture(videoId, canvasId, statusId) {
       }
       const vW=video.videoWidth||640, vH=video.videoHeight||480;
       const centered=isFaceCenteredW(det,vW,vH);
-      const yaw=getNoseYaw(det.landmarks);
+      const smileScore = det.expressions ? det.expressions.happy : 0;
 
       if(!centered && wPhase==='center') {
         if(guide) guide.className='face-guide liveness-warn';
@@ -4390,21 +4338,9 @@ async function startWajahCapture(videoId, canvasId, statusId) {
       switch(wPhase) {
         case 'center':
           if(guide) guide.className='face-guide liveness-warn';
-          if(statusBox) { statusBox.className='liveness-status-box warn'; statusBox.textContent='➡ Tengok ke KANAN'; }
-          if(statusEl) statusEl.textContent='Tengok ke kanan...';
-          if(yaw < -YAW_THR) wPhase='right';
-          break;
-        case 'right':
-          if(guide) guide.className='face-guide liveness-warn';
-          if(statusBox) { statusBox.className='liveness-status-box warn'; statusBox.textContent='⬅ Sekarang tengok ke KIRI'; }
-          if(statusEl) statusEl.textContent='Sekarang tengok ke kiri...';
-          if(yaw > YAW_THR) wPhase='left';
-          break;
-        case 'left':
-          if(guide) guide.className='face-guide liveness-warn';
-          if(statusBox) { statusBox.className='liveness-status-box warn'; statusBox.textContent='🔄 Kembali hadap ke depan...'; }
-          if(statusEl) statusEl.textContent='Kembali hadap ke depan...';
-          if(Math.abs(yaw) < YAW_THR*0.6) wPhase='done';
+          if(statusBox) { statusBox.className='liveness-status-box warn'; statusBox.textContent='🙂 Lihat kamera dan tersenyum'; }
+          if(statusEl) statusEl.textContent='Silakan lihat kamera dan tersenyum';
+          if(smileScore >= SMILE_THR) wPhase='done';
           break;
         case 'done':
           if(!captured) {
@@ -5266,34 +5202,12 @@ async function startFaceScan() {
     const guide = camContainer ? camContainer.querySelector('.face-guide') : null;
     const statusEl = $('#device-face-status');
 
-    function getEAR(eye) {
-      const A=Math.hypot(eye[1].x-eye[5].x,eye[1].y-eye[5].y);
-      const B=Math.hypot(eye[2].x-eye[4].x,eye[2].y-eye[4].y);
-      const C=Math.hypot(eye[0].x-eye[3].x,eye[0].y-eye[3].y);
-      return (A+B)/(2*C);
-    }
-    function isFrontal(landmarks) {
-      const pts=landmarks.positions;
-      const lx=(pts[36].x+pts[39].x)/2, rx=(pts[42].x+pts[45].x)/2;
-      const nx=pts[30].x, cx=(lx+rx)/2, fw=Math.abs(rx-lx);
-      return Math.abs(nx-cx)/(fw+1)<0.18;
-    }
-    function isFaceCentered(det,vW,vH) {
-      const b=det.detection.box;
-      const cx=b.x+b.width/2,cy=b.y+b.height/2;
-      return Math.abs(cx-vW/2)<vW*0.25 && Math.abs(cy-vH/2)<vH*0.25 && b.width>vW*0.18 && b.width<vW*0.88;
-    }
-
-    const YAW_THR_D=0.13;
-    function getNoseYawD(lm){
-      const p=lm.positions,lx=(p[36].x+p[39].x)/2,rx=(p[42].x+p[45].x)/2;
-      return (p[30].x-(lx+rx)/2)/(Math.abs(rx-lx)+1);
-    }
     function isFaceCenteredD(det,vW,vH){
       const b=det.detection.box,cx=b.x+b.width/2,cy=b.y+b.height/2;
       return Math.abs(cx-vW/2)<vW*0.28&&Math.abs(cy-vH/2)<vH*0.28&&b.width>vW*0.16&&b.width<vW*0.90;
     }
 
+    const SMILE_THR_D = 0.70;
     let dPhase='center', attempts=0, done=false;
 
     const interval = setInterval(async () => {
@@ -5306,7 +5220,7 @@ async function startFaceScan() {
       }
       const det = await faceapi
         .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize:416,scoreThreshold:0.5}))
-        .withFaceLandmarks().withFaceDescriptor();
+        .withFaceLandmarks().withFaceDescriptor().withFaceExpressions();
 
       if(!det) {
         dPhase='center';
@@ -5317,7 +5231,7 @@ async function startFaceScan() {
       }
       const vW=video.videoWidth||640,vH=video.videoHeight||480;
       const centered=isFaceCenteredD(det,vW,vH);
-      const yaw=getNoseYawD(det.landmarks);
+      const smileScore = det.expressions ? det.expressions.happy : 0;
 
       if(!centered && dPhase==='center'){
         if(guide) guide.className='face-guide liveness-warn';
@@ -5329,21 +5243,9 @@ async function startFaceScan() {
       switch(dPhase){
         case 'center':
           if(guide) guide.className='face-guide liveness-warn';
-          if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='➡ Tengok ke KANAN';}
-          if(statusEl) statusEl.textContent='Tengok ke kanan...';
-          if(yaw < -YAW_THR_D) dPhase='right';
-          break;
-        case 'right':
-          if(guide) guide.className='face-guide liveness-warn';
-          if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='⬅ Sekarang tengok ke KIRI';}
-          if(statusEl) statusEl.textContent='Sekarang tengok ke kiri...';
-          if(yaw > YAW_THR_D) dPhase='left';
-          break;
-        case 'left':
-          if(guide) guide.className='face-guide liveness-warn';
-          if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='🔄 Kembali hadap ke depan...';}
-          if(statusEl) statusEl.textContent='Kembali hadap ke depan...';
-          if(Math.abs(yaw)<YAW_THR_D*0.6) dPhase='done';
+          if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='🙂 Lihat kamera dan tersenyum';}
+          if(statusEl) statusEl.textContent='Silakan lihat kamera dan tersenyum';
+          if(smileScore >= SMILE_THR_D) dPhase='done';
           break;
         case 'done':
           if(guide) guide.className='face-guide liveness-ok';
@@ -5486,34 +5388,12 @@ async function startAbsenFaceScan() {
     const guide = camContainer ? camContainer.querySelector('.face-guide') : null;
     const statusEl = $('#absen-face-status');
 
-    function getEAR(eye) {
-      const A=Math.hypot(eye[1].x-eye[5].x,eye[1].y-eye[5].y);
-      const B=Math.hypot(eye[2].x-eye[4].x,eye[2].y-eye[4].y);
-      const C=Math.hypot(eye[0].x-eye[3].x,eye[0].y-eye[3].y);
-      return (A+B)/(2*C);
-    }
-    function isFrontal(landmarks) {
-      const pts=landmarks.positions;
-      const lx=(pts[36].x+pts[39].x)/2, rx=(pts[42].x+pts[45].x)/2;
-      const nx=pts[30].x, cx=(lx+rx)/2, fw=Math.abs(rx-lx);
-      return Math.abs(nx-cx)/(fw+1)<0.18;
-    }
-    function isFaceCentered(det,vW,vH) {
-      const b=det.detection.box;
-      const cx=b.x+b.width/2, cy=b.y+b.height/2;
-      return Math.abs(cx-vW/2)<vW*0.25 && Math.abs(cy-vH/2)<vH*0.25 && b.width>vW*0.18 && b.width<vW*0.88;
-    }
-
-    const YAW_THR_A=0.13;
-    function getNoseYawA(lm){
-      const p=lm.positions,lx=(p[36].x+p[39].x)/2,rx=(p[42].x+p[45].x)/2;
-      return (p[30].x-(lx+rx)/2)/(Math.abs(rx-lx)+1);
-    }
     function isFaceCenteredA(det,vW,vH){
       const b=det.detection.box,cx=b.x+b.width/2,cy=b.y+b.height/2;
       return Math.abs(cx-vW/2)<vW*0.28&&Math.abs(cy-vH/2)<vH*0.28&&b.width>vW*0.16&&b.width<vW*0.90;
     }
 
+    const SMILE_THR_A = 0.70;
     let aPhase='center', attempts=0, done=false;
 
     const interval = setInterval(async () => {
@@ -5526,7 +5406,7 @@ async function startAbsenFaceScan() {
       }
       const det = await faceapi
         .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize:416,scoreThreshold:0.5}))
-        .withFaceLandmarks().withFaceDescriptor();
+        .withFaceLandmarks().withFaceDescriptor().withFaceExpressions();
 
       if(!det) {
         aPhase='center';
@@ -5537,7 +5417,7 @@ async function startAbsenFaceScan() {
       }
       const vW=video.videoWidth||640,vH=video.videoHeight||480;
       const centered=isFaceCenteredA(det,vW,vH);
-      const yaw=getNoseYawA(det.landmarks);
+      const smileScore = det.expressions ? det.expressions.happy : 0;
 
       if(!centered && aPhase==='center'){
         if(guide) guide.className='face-guide liveness-warn';
@@ -5549,21 +5429,9 @@ async function startAbsenFaceScan() {
       switch(aPhase){
         case 'center':
           if(guide) guide.className='face-guide liveness-warn';
-          if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='➡ Tengok ke KANAN';}
-          if(statusEl) statusEl.textContent='Tengok ke kanan...';
-          if(yaw < -YAW_THR_A) aPhase='right';
-          break;
-        case 'right':
-          if(guide) guide.className='face-guide liveness-warn';
-          if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='⬅ Sekarang tengok ke KIRI';}
-          if(statusEl) statusEl.textContent='Sekarang tengok ke kiri...';
-          if(yaw > YAW_THR_A) aPhase='left';
-          break;
-        case 'left':
-          if(guide) guide.className='face-guide liveness-warn';
-          if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='🔄 Kembali hadap ke depan...';}
-          if(statusEl) statusEl.textContent='Kembali hadap ke depan...';
-          if(Math.abs(yaw)<YAW_THR_A*0.6) aPhase='done';
+          if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='🙂 Lihat kamera dan tersenyum';}
+          if(statusEl) statusEl.textContent='Silakan lihat kamera dan tersenyum';
+          if(smileScore >= SMILE_THR_A) aPhase='done';
           break;
         case 'done':
           if(guide) guide.className='face-guide liveness-ok';
