@@ -2504,30 +2504,6 @@
         <div class="form-group"><label class="form-label">Atas Nama Rekening</label><input type="text" id="reg-rekening" class="form-input" placeholder="1234567890 a.n. Nama"></div>
       </div>
 
-      <!-- Foto Profil -->
-      <div class="card" style="margin:1.25rem 0; padding:1.25rem;">
-        <div class="card-title mb-2">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:0.35rem;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          Foto Profil
-        </div>
-        <div id="reg-photo-step">
-          <video id="reg-video-photo" style="width:100%; border-radius:var(--radius-lg);" autoplay playsinline muted></video>
-          <canvas id="reg-canvas-photo" style="display:none;"></canvas>
-          <img id="reg-photo-preview" class="hidden" style="width:100%; border-radius:var(--radius-lg); margin-top:0.75rem;">
-        </div>
-        <div class="flex gap-2 mt-3">
-          <button id="btn-capture-photo" class="btn btn-secondary btn-sm">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            Ambil dari Kamera
-          </button>
-          <button id="btn-pick-photo" class="btn btn-outline btn-sm">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            Pilih dari Galeri
-          </button>
-        </div>
-        <input type="file" id="reg-photo-file" accept="image/*" class="hidden">
-      </div>
-
       <!-- Face Capture -->
       <div class="card" style="margin:1.25rem 0; padding:1.25rem;">
         <div class="card-title mb-2">
@@ -3318,6 +3294,92 @@ document.getElementById('pwa-favicon').setAttribute('href', PWA_ICON_192);
     if (btn) btn.classList.remove('hidden');
   });
 })();
+
+// ==================== ID CARD POPUP (in-app lightbox) ====================
+(function injectIdCardPopupStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #idcard-popup-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.85);
+      backdrop-filter: blur(8px);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      animation: fadeInOverlay 0.2s ease;
+    }
+    #idcard-popup-overlay.show { display: flex; }
+    @keyframes fadeInOverlay { from { opacity:0; } to { opacity:1; } }
+    #idcard-popup-inner {
+      position: relative;
+      max-width: 520px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    #idcard-popup-title {
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    #idcard-popup-img {
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      display: block;
+    }
+    #idcard-popup-close {
+      background: rgba(255,255,255,0.15);
+      border: 1.5px solid rgba(255,255,255,0.3);
+      color: white;
+      border-radius: 999px;
+      padding: 0.5rem 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #idcard-popup-close:hover { background: rgba(255,255,255,0.25); }
+  `;
+  document.head.appendChild(style);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'idcard-popup-overlay';
+  overlay.innerHTML = `
+    <div id="idcard-popup-inner">
+      <div id="idcard-popup-title"></div>
+      <img id="idcard-popup-img" src="" alt="ID Card">
+      <button id="idcard-popup-close" onclick="closeIdCardPopup()">✕ Tutup</button>
+    </div>
+  `;
+  overlay.addEventListener('click', function(e) {
+    if(e.target === overlay) closeIdCardPopup();
+  });
+  document.body.appendChild(overlay);
+})();
+
+function showIdCardPopup(imgUrl, title) {
+  const overlay = document.getElementById('idcard-popup-overlay');
+  const img = document.getElementById('idcard-popup-img');
+  const titleEl = document.getElementById('idcard-popup-title');
+  if(!overlay || !img) return;
+  img.src = imgUrl;
+  if(titleEl) titleEl.textContent = title || 'ID Card';
+  overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeIdCardPopup() {
+  const overlay = document.getElementById('idcard-popup-overlay');
+  if(overlay) overlay.classList.remove('show');
+  document.body.style.overflow = '';
+}
 
 // ==================== ICONS (SVG Stroke) ====================
 const ICONS = {
@@ -4158,8 +4220,47 @@ async function handleRegPhotoFile(e) {
   }
 }
 
-let updateFotoBase64 = null;
-let updateFotoOriginalBase64 = null;
+let editProfilFotoBase64 = null;
+let editProfilFotoOriginalBase64 = null;
+
+function openUpdateFotoInline() {
+  showUpdateFotoModal();
+  // Override callback: setelah crop selesai, update preview di form edit profil
+  const origCallback = cropState.callback;
+  cropState.callback = (croppedBase64) => {
+    editProfilFotoBase64 = croppedBase64;
+    updateFotoBase64 = croppedBase64;
+    const preview = document.getElementById('edit-foto-preview-img');
+    const wrap = document.getElementById('edit-foto-preview-wrap');
+    if(preview) preview.src = croppedBase64;
+    if(wrap) wrap.classList.remove('hidden');
+    // Update header foto juga
+    const headerFoto = document.getElementById('header-foto');
+    if(headerFoto) headerFoto.src = croppedBase64;
+  };
+}
+
+async function handleEditFotoFile(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  try {
+    const resized = await fileToResizedBase64(file, 1200);
+    editProfilFotoOriginalBase64 = resized;
+    updateFotoOriginalBase64 = resized;
+    openCropModal(resized, (croppedBase64) => {
+      editProfilFotoBase64 = croppedBase64;
+      updateFotoBase64 = croppedBase64;
+      const preview = document.getElementById('edit-foto-preview-img');
+      const wrap = document.getElementById('edit-foto-preview-wrap');
+      if(preview) preview.src = croppedBase64;
+      if(wrap) wrap.classList.remove('hidden');
+      const headerFoto = document.getElementById('header-foto');
+      if(headerFoto) headerFoto.src = croppedBase64;
+    });
+  } catch(err) {
+    showAlert('Gagal memproses gambar: ' + err);
+  }
+}
 
 function urlToBase64(url) {
   return new Promise((resolve, reject) => {
@@ -4298,7 +4399,7 @@ async function doRegister() {
   if(!data.faceDescriptor) { showAlert('Pendaftaran wajah wajib dilakukan'); return; }
   try {
     const res = await apiCall('registerUser', data);
-    showAlert('Registrasi berhasil! ID Card: ' + res.idCardUnik + '. Silakan login.', 'success');
+    showAlert('Registrasi berhasil! Silakan login.', 'success');
     setTimeout(() => navigateTo('login'), 2000);
   } catch(e) {
     showAlert(e);
@@ -4583,6 +4684,17 @@ function renderDashboardUser(data) {
   const container = $('#dashboard-user');
   container.classList.remove('hidden');
   $('#dashboard-admin').classList.add('hidden');
+
+  // Notifikasi selamat datang jika foto profil belum diisi
+  const welcomeKey = 'welcomed_' + (AppState.user && AppState.user.idUser);
+  const fotoAda = AppState.user && AppState.user.fotoProfil && AppState.user.fotoProfil.indexOf('base64') === -1 && AppState.user.fotoProfil.length > 50;
+  if (!fotoAda && !sessionStorage.getItem(welcomeKey)) {
+    sessionStorage.setItem(welcomeKey, '1');
+    setTimeout(() => {
+      showAlert('Selamat datang! Silakan lengkapi <strong>Foto Profil</strong> melalui menu <strong>Profil</strong>, kemudian lakukan <strong>Generate ID Card</strong> agar kartu identitas dapat digunakan.', 'info', { duration: 9000 });
+    }, 800);
+  }
+
   container.innerHTML = `
     <div class="grid grid-2">
       <div class="card stat-card">
@@ -4676,22 +4788,14 @@ function renderProfil() {
     <div class="profil-content-card" style="margin-top: 0;">
 
       <!-- ACTION BUTTONS -->
-      <div class="profil-action-grid">
+      <div class="profil-action-grid" style="grid-template-columns: repeat(2, 1fr);">
         <button class="profil-action-btn" onclick="toggleProfilEdit(true)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Edit Profil
         </button>
-        <button class="profil-action-btn" onclick="showUpdateFotoModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          Foto Profil
-        </button>
         <button class="profil-action-btn" onclick="showUpdateWajahModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Data Wajah
-        </button>
-        <button class="profil-action-btn" onclick="generateIdCardManual()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          ID Card
+          Update Wajah
         </button>
       </div>
 
@@ -4710,6 +4814,26 @@ function renderProfil() {
             <div class="form-group"><label class="form-label">No. Whatsapp</label><input type="text" id="edit-whatsapp" class="form-input" value="${escapeHtml(u.No_Whatsapp||'')}"></div>
             <div class="form-group"><label class="form-label">Nama Bank</label><input type="text" id="edit-bank" class="form-input" value="${escapeHtml(u.Nama_Bank||'')}"></div>
             <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Atas Nama Rekening</label><input type="text" id="edit-rekening" class="form-input" value="${escapeHtml(u.Atas_Nama_Rekening||'')}"></div>
+          </div>
+          <div style="margin-top:1rem; padding-top:0.875rem; border-top:1px dashed var(--border);">
+            <div class="form-group" style="margin-bottom:0.75rem;">
+              <label class="form-label">Foto Profil</label>
+              <div class="flex gap-2 flex-wrap" style="margin-top:0.35rem;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="openUpdateFotoInline()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  Ambil dari Kamera
+                </button>
+                <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('edit-foto-file-input').click()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  Pilih dari Galeri
+                </button>
+                <input type="file" id="edit-foto-file-input" accept="image/*" class="hidden" onchange="handleEditFotoFile(event)">
+              </div>
+              <div id="edit-foto-preview-wrap" class="hidden" style="margin-top:0.75rem;">
+                <img id="edit-foto-preview-img" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--border); display:block;">
+                <div style="font-size:0.75rem; color:var(--success); margin-top:0.35rem;">✅ Foto baru siap disimpan</div>
+              </div>
+            </div>
           </div>
           <button id="btn-save-profil-inline" class="btn btn-primary btn-sm" onclick="saveProfil()" style="margin-top:0.75rem;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -4860,16 +4984,16 @@ function renderIdCardPreview(u) {
       <div style="border:1px solid var(--border); border-radius:var(--radius-lg); background:#f8fafc; text-align:center; padding:1rem;">
         <div class="id-card-sides-wrap">
           <div class="id-card-side-box">
-            <img src="${safeDepan}" alt="ID Card Depan" onclick="window.open('${safePdf}','_blank')">
+            <img src="${safeDepan}" alt="ID Card Depan" style="cursor:zoom-in;" onclick="showIdCardPopup('${safeDepan}', 'ID Card - Depan')">
             <div class="id-card-side-label">Depan</div>
           </div>
           <div class="id-card-side-box">
-            <img src="${safeBelakang}" alt="ID Card Belakang" onclick="window.open('${safePdf}','_blank')">
+            <img src="${safeBelakang}" alt="ID Card Belakang" style="cursor:zoom-in;" onclick="showIdCardPopup('${safeBelakang}', 'ID Card - Belakang')">
             <div class="id-card-side-label">Belakang</div>
           </div>
         </div>
         <div class="text-muted" style="font-size:0.75rem; margin-top:0.75rem;">
-          Klik salah satu gambar atau tombol Download untuk membuka PDF
+          Klik gambar untuk memperbesar &bull; Gunakan tombol Download untuk buka PDF
         </div>
       </div>
     `;
@@ -4904,15 +5028,13 @@ function renderIdCardPreview(u) {
 
 function toggleProfilEdit(enable) {
   profilEditMode = enable;
-  // Coba both: inline form (new) dan legacy form
   const inlineForm = document.getElementById('profil-edit-inline');
+  // Sembunyikan legacy form (form kosong) — jangan pernah tampilkan lagi
   const legacyForm = document.getElementById('profil-edit-form');
-  if(inlineForm) inlineForm.classList.toggle('hidden', !enable);
-  if(legacyForm) legacyForm.classList.toggle('hidden', !enable);
-  if(enable) {
-    if(inlineForm) {
-      inlineForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+  if(legacyForm) legacyForm.classList.add('hidden');
+  if(inlineForm) {
+    inlineForm.classList.toggle('hidden', !enable);
+    if(enable) inlineForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
 
@@ -4929,6 +5051,23 @@ async function saveProfil() {
   };
   try {
     await apiCallWithToken('updateProfil', { updates });
+    // Jika ada foto baru dari form edit profil, simpan juga
+    if(editProfilFotoBase64) {
+      try {
+        const res = await apiCallWithToken('updateFotoProfil', {
+          fotoProfilBase64: editProfilFotoBase64,
+          fotoProfilOriginalBase64: editProfilFotoOriginalBase64
+        });
+        if(res.url && AppState.user) {
+          AppState.user.fotoProfil = res.url;
+          localStorage.setItem('absensi_user', JSON.stringify(AppState.user));
+        }
+      } catch(eFoto) {
+        showAlert('Profil teks tersimpan, tapi foto gagal: ' + eFoto, 'warning');
+      }
+      editProfilFotoBase64 = null;
+      editProfilFotoOriginalBase64 = null;
+    }
     showAlert('Profil berhasil diperbarui', 'success');
     toggleProfilEdit(false);
     initProfil();
