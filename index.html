@@ -890,8 +890,97 @@
 }
 
 .liveness-status-box.warn {
-  background: rgba(245,158,11,0.9);
-}
+      background: rgba(245,158,11,0.9);
+    }
+
+    .camera-switch-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(15,23,42,0.55);
+      border: 1.5px solid rgba(255,255,255,0.3);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: var(--transition);
+      z-index: 11;
+    }
+
+    .camera-switch-btn:hover { background: rgba(37,99,235,0.85); transform: rotate(180deg) scale(1.05); }
+    .camera-switch-btn:active { transform: rotate(180deg) scale(0.92); }
+    .camera-switch-btn svg { width: 20px; height: 20px; }
+
+    .absen-mode-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      width: 100%;
+      max-width: 420px;
+      margin-top: 0.5rem;
+    }
+
+    @media (min-width: 520px) {
+      .absen-mode-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .absen-mode-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem 1.25rem;
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.625rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .absen-mode-card:hover {
+      border-color: var(--primary);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-3px);
+    }
+
+    .absen-mode-card .absen-mode-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .absen-mode-card.primary .absen-mode-icon {
+      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+      color: #2563eb;
+    }
+
+    .absen-mode-card.secondary .absen-mode-icon {
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+      color: #059669;
+    }
+
+    .absen-mode-card .absen-mode-title {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .absen-mode-card .absen-mode-desc {
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
 
     .qr-overlay { 
       position: absolute; 
@@ -3001,6 +3090,9 @@
             <div class="camera-container">
               <video id="device-face-video" style="width:100%; border-radius:var(--radius-lg);" autoplay playsinline muted></video>
               <div class="face-guide"></div>
+              <button class="camera-switch-btn" id="btn-switch-cam-device" title="Ganti Kamera">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              </button>
             </div>
             <div id="device-face-status" class="device-status mt-3">Posisikan wajah di dalam oval...</div>
           </div>
@@ -3020,17 +3112,23 @@
           <div id="absen-step-idle">
             <div class="device-time" id="absen-clock">--:--</div>
             <div class="device-date" id="absen-date">-</div>
-            <div class="device-btn-wrap">
-              <div class="device-btn-pulse"></div>
-              <div class="device-btn-pulse device-btn-pulse2"></div>
-              <button id="btn-absen-manual" class="device-btn-absen">
-                <span class="btn-icon">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                </span>
-                <span class="btn-label">Absen</span>
-              </button>
+            <div class="absen-mode-grid">
+              <div class="absen-mode-card primary" id="btn-absen-manual">
+                <div class="absen-mode-icon">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                </div>
+                <div class="absen-mode-title">Scan QR + Wajah</div>
+                <div class="absen-mode-desc">Scan ID Card (milik sendiri/orang lain), lalu verifikasi wajah</div>
+              </div>
+              <div class="absen-mode-card secondary" id="btn-absen-self">
+                <div class="absen-mode-icon">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div class="absen-mode-title">Absen Wajah Saya</div>
+                <div class="absen-mode-desc">Langsung scan wajah sendiri, tanpa QR Code</div>
+              </div>
             </div>
-            <div class="device-status">Tekan tombol untuk memulai absensi</div>
+            <div class="device-status mt-2">Pilih salah satu metode di atas</div>
           </div>
           <div id="absen-step-qr" class="hidden" style="width:100%; max-width:520px; text-align:center;">
             <div class="card-title mb-3" style="font-size:1.5rem; font-weight:700;">
@@ -3056,9 +3154,30 @@
             <div class="camera-container">
               <video id="absen-face-video" style="width:100%; border-radius:var(--radius-lg);" autoplay playsinline muted></video>
               <div class="face-guide"></div>
+              <button class="camera-switch-btn" id="btn-switch-cam-absen" title="Ganti Kamera">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              </button>
             </div>
             <div id="absen-face-status" class="device-status mt-3">Posisikan wajah di dalam oval...</div>
             <button id="btn-absen-face-cancel" class="btn btn-outline mt-3">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Batal
+            </button>
+          </div>
+          <div id="absen-step-face-self" class="hidden" style="width:100%; max-width:420px; text-align:center;">
+            <div class="card-title mb-3" style="font-size:1.5rem; font-weight:700;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:0.5rem;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Absen Wajah Saya
+            </div>
+            <div class="camera-container">
+              <video id="absen-self-video" style="width:100%; border-radius:var(--radius-lg);" autoplay playsinline muted></video>
+              <div class="face-guide"></div>
+              <button class="camera-switch-btn" id="btn-switch-cam-self" title="Ganti Kamera">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              </button>
+            </div>
+            <div id="absen-self-status" class="device-status mt-3">Posisikan wajah di dalam oval...</div>
+            <button id="btn-absen-self-cancel" class="btn btn-outline mt-3">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               Batal
             </button>
@@ -3877,7 +3996,7 @@ async function captureFace() {
     }
 
     // Ambang batas akurasi deteksi senyum (0 - 1). Semakin tinggi = makin ketat.
-    const SMILE_THRESHOLD = 0.70;
+    const SMILE_THRESHOLD = 0.75;
     let attempts = 0;
     const MAX_ATTEMPTS = 300; // ~150 detik
 
@@ -5786,6 +5905,7 @@ function showDeviceResult(success, message) {
 let absenQrScanner = null;
 let absenIdUser = null;
 let absenFaceDescriptor = null;
+let currentFacingMode = 'user'; // 'user' = depan (selfie), 'environment' = belakang
 
 function initAbsenManual() {
   resetAbsenFlow();
@@ -5799,19 +5919,165 @@ function initAbsenManual() {
   if(window._absenClockInterval) clearInterval(window._absenClockInterval);
   window._absenClockInterval = setInterval(updateAbsenClock, 1000);
   $('#btn-absen-manual').addEventListener('click', startAbsenFlow);
+  $('#btn-absen-self').addEventListener('click', startAbsenSelfFlow);
   $('#btn-absen-qr-cancel').addEventListener('click', resetAbsenFlow);
   $('#btn-absen-face-cancel').addEventListener('click', resetAbsenFlow);
+  $('#btn-absen-self-cancel').addEventListener('click', resetAbsenFlow);
   $('#btn-absen-result-ok').addEventListener('click', resetAbsenFlow);
+  const swA = $('#btn-switch-cam-absen');
+  if(swA) swA.addEventListener('click', () => switchCameraFacing('absen-face-video'));
+  const swS = $('#btn-switch-cam-self');
+  if(swS) swS.addEventListener('click', () => switchCameraFacing('absen-self-video'));
 }
 
 function resetAbsenFlow() {
   absenIdUser = null; absenFaceDescriptor = null;
+  currentFacingMode = 'user';
   stopVideo();
   if(absenQrScanner) { try { absenQrScanner.stop().catch(()=>{}); absenQrScanner.clear(); } catch(e){} absenQrScanner = null; }
   $('#absen-step-idle').classList.remove('hidden');
   $('#absen-step-qr').classList.add('hidden');
   $('#absen-step-face').classList.add('hidden');
+  $('#absen-step-face-self').classList.add('hidden');
   $('#absen-step-result').classList.add('hidden');
+}
+
+/**
+ * Mengganti arah kamera (depan/belakang) pada elemen video yang sedang aktif.
+ * Menghentikan stream lama, lalu meminta stream baru dengan facingMode terbalik.
+ */
+async function switchCameraFacing(videoElId) {
+  currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+  const video = $(`#${videoElId}`);
+  if(!video) return;
+  stopVideo();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: currentFacingMode, width:{ideal:640}, height:{ideal:480} }
+    });
+    AppState.videoStream = stream;
+    video.srcObject = stream;
+    // Hanya mirror tampilan saat kamera depan (selfie), kamera belakang tidak di-mirror
+    video.style.transform = (currentFacingMode === 'user') ? 'scaleX(-1)' : 'none';
+    video.play();
+  } catch(e) {
+    showAlert('Gagal mengganti kamera: ' + getErrorMessage(e), 'warning');
+    currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+  }
+}
+
+// ==================== ABSEN WAJAH SAYA (tanpa QR) ====================
+async function startAbsenSelfFlow() {
+  $('#absen-step-idle').classList.add('hidden');
+  $('#absen-step-face-self').classList.remove('hidden');
+  currentFacingMode = 'user';
+  try {
+    const res = await apiCallWithToken('getMyFaceProfile', {});
+    if(!res.found || !res.user.faceDescriptor) {
+      showAbsenSelfResult(false, 'Data wajah Anda belum terdaftar. Silakan update data wajah di halaman Profil terlebih dahulu.');
+      return;
+    }
+    absenIdUser = res.user.idUser;
+    absenFaceDescriptor = res.user.faceDescriptor;
+    startAbsenSelfFaceScan();
+  } catch(e) {
+    showAbsenSelfResult(false, 'Gagal memuat data wajah: ' + getErrorMessage(e));
+  }
+}
+
+async function startAbsenSelfFaceScan() {
+  if(!AppState.modelsLoaded) await loadFaceApiModels();
+  const video = $('#absen-self-video');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode, width:{ideal:640}, height:{ideal:480} } });
+    AppState.videoStream = stream;
+    video.srcObject = stream;
+    video.style.transform = 'scaleX(-1)';
+    video.play();
+
+    const camContainer = video.closest('.camera-container');
+    let statusBox = camContainer ? camContainer.querySelector('.liveness-status-box') : null;
+    if(camContainer && !statusBox) {
+      statusBox = document.createElement('div');
+      statusBox.className = 'liveness-status-box';
+      camContainer.appendChild(statusBox);
+    }
+    const guide = camContainer ? camContainer.querySelector('.face-guide') : null;
+    const statusEl = $('#absen-self-status');
+
+    function isFaceCenteredS(det,vW,vH){
+      const b=det.detection.box,cx=b.x+b.width/2,cy=b.y+b.height/2;
+      return Math.abs(cx-vW/2)<vW*0.28&&Math.abs(cy-vH/2)<vH*0.28&&b.width>vW*0.16&&b.width<vW*0.90;
+    }
+
+    const SMILE_THR_S = 0.70;
+    let sPhase='center', attempts=0, done=false;
+
+    const interval = setInterval(async () => {
+      if(done) return;
+      attempts++;
+      if(attempts > 240) {
+        done=true; clearInterval(interval); stopVideo();
+        showAbsenSelfResult(false, 'Waktu habis. Silakan coba lagi.');
+        return;
+      }
+      const det = await faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize:416,scoreThreshold:0.5}))
+        .withFaceLandmarks().withFaceDescriptor().withFaceExpressions();
+
+      if(!det) {
+        sPhase='center';
+        if(guide) guide.className='face-guide';
+        if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='👁 Arahkan wajah ke kamera';}
+        if(statusEl) statusEl.textContent='Posisikan wajah di dalam oval...';
+        return;
+      }
+      const vW=video.videoWidth||640,vH=video.videoHeight||480;
+      const centered=isFaceCenteredS(det,vW,vH);
+      const smileScore = det.expressions ? det.expressions.happy : 0;
+
+      if(!centered && sPhase==='center'){
+        if(guide) guide.className='face-guide liveness-warn';
+        if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='↔ Posisikan wajah di tengah';}
+        if(statusEl) statusEl.textContent='Posisikan wajah di tengah oval...';
+        return;
+      }
+
+      switch(sPhase){
+        case 'center':
+          if(guide) guide.className='face-guide liveness-warn';
+          if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='🙂 Lihat kamera dan tersenyum';}
+          if(statusEl) statusEl.textContent='Silakan lihat kamera dan tersenyum';
+          if(smileScore >= SMILE_THR_S) sPhase='done';
+          break;
+        case 'done':
+          if(guide) guide.className='face-guide liveness-ok';
+          if(statusBox){statusBox.className='liveness-status-box ok';statusBox.textContent='✅ Liveness OK — Mencocokkan...';}
+          if(absenFaceDescriptor){
+            const skor=(1-faceapi.euclideanDistance(det.descriptor,new Float32Array(absenFaceDescriptor)))*100;
+            if(statusEl) statusEl.textContent=`Skor kecocokan: ${skor.toFixed(1)}%`;
+            if(skor>FACE_MATCH_THRESHOLD){
+              done=true;clearInterval(interval);stopVideo();
+              const res2=await apiCallWithToken('recordAbsensiSelf',{idUser:absenIdUser,skorKecocokan:skor/100,statusValidasi:'VALID'});
+              showAbsenSelfResult(true,`${res2.nama} - ${res2.message} (${res2.waktu})`);
+            } else if(attempts>160){
+              done=true;clearInterval(interval);stopVideo();
+              showAbsenSelfResult(false,'Wajah tidak cocok dengan data Anda. Silakan coba lagi.');
+            }
+          }
+          break;
+      }
+    }, 500);
+  } catch(e) { showAbsenSelfResult(false, 'Gagal akses kamera: '+e.message); }
+}
+
+function showAbsenSelfResult(success, message) {
+  $('#absen-step-face-self').classList.add('hidden');
+  $('#absen-step-result').classList.remove('hidden');
+  $('#absen-result-icon').textContent = success ? '✅' : '❌';
+  $('#absen-result-text').textContent = success ? message : ('⚠️ ' + message);
+  $('#absen-result-text').className = success ? 'text-success' : 'text-danger';
+  setTimeout(resetAbsenFlow, 5000);
 }
 
 async function startAbsenFlow() {
