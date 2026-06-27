@@ -4239,27 +4239,67 @@ async function captureFace() {
     return;
   }
 
-  // Guard: cek faceapi library
-  if (typeof faceapi === 'undefined') {
-    console.error('[WAJAH] Library face-api.js belum dimuat');
-    showAlert('Library pengenalan wajah belum siap. Periksa koneksi internet dan refresh halaman.');
-    return;
-  }
-
   const statusEl = document.getElementById('reg-face-status');
   const btnCapture = document.getElementById('btn-capture-face');
 
   // Disable tombol agar tidak double-click
   if (btnCapture) btnCapture.disabled = true;
 
-  // Feedback awal
+  // PENTING: minta akses kamera LEBIH DULU, selagi "user gesture" dari klik tombol
+  // masih aktif. Beberapa browser/WebView (terutama di Android/iOS) akan diam-diam
+  // menolak/mengabaikan getUserMedia() jika dipanggil setelah ada `await` yang lama
+  // (seperti loading model face-api dari CDN) karena dianggap bukan respons langsung
+  // dari interaksi user. Inilah sebab utama "kamera tidak terbuka tanpa error" di
+  // halaman Register, padahal di halaman Profil (Update Wajah) modelnya sudah
+  // ter-load sebelumnya sehingga getUserMedia() langsung terpanggil tanpa delay.
+  if (statusEl) { statusEl.textContent = '📷 Membuka kamera...'; statusEl.className = 'text-muted'; }
+
+  // Stop stream lama jika ada
+  stopVideo();
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    console.log('[WAJAH] Stream kamera berhasil didapat');
+  } catch (camErr) {
+    console.error('[WAJAH] Gagal akses kamera:', camErr.name, camErr.message);
+    let userMsg = 'Tidak bisa mengakses kamera: ' + camErr.message;
+    if (camErr.name === 'NotAllowedError' || camErr.name === 'PermissionDeniedError') {
+      userMsg = 'Akses kamera ditolak. Izinkan akses kamera di pengaturan browser Anda, lalu coba lagi.';
+    } else if (camErr.name === 'NotFoundError' || camErr.name === 'DevicesNotFoundError') {
+      userMsg = 'Kamera tidak ditemukan. Pastikan perangkat Anda memiliki kamera yang terhubung.';
+    } else if (camErr.name === 'NotReadableError' || camErr.name === 'TrackStartError') {
+      userMsg = 'Kamera sedang digunakan aplikasi lain. Tutup aplikasi lain dan coba lagi.';
+    } else if (camErr.name === 'OverconstrainedError') {
+      userMsg = 'Kamera tidak mendukung resolusi yang diminta. Coba dengan kamera lain.';
+    }
+    showAlert(userMsg, 'danger');
+    if (statusEl) { statusEl.textContent = '❌ ' + userMsg; statusEl.className = 'text-danger'; }
+    if (btnCapture) btnCapture.disabled = false;
+    return;
+  }
+
+  AppState.videoStream = stream;
+
+  // Guard: cek faceapi library (boleh dicek setelah kamera terbuka, tidak menghalangi preview)
+  if (typeof faceapi === 'undefined') {
+    console.error('[WAJAH] Library face-api.js belum dimuat');
+    showAlert('Library pengenalan wajah belum siap. Periksa koneksi internet dan refresh halaman.');
+    if (statusEl) { statusEl.textContent = '⚠️ Library pengenalan wajah belum siap.'; statusEl.className = 'text-danger'; }
+    if (btnCapture) btnCapture.disabled = false;
+    return;
+  }
+
+  // Feedback loading model (kamera sudah tampil duluan ke user)
   if (statusEl) {
     statusEl.textContent = '⏳ Memuat model pengenalan wajah...';
     statusEl.className = 'text-muted';
   }
 
   try {
-    // Load model jika belum
+    // Load model jika belum (sekarang kamera sudah aktif, jadi tidak menghalangi izin)
     if (!AppState.modelsLoaded) {
       console.log('[WAJAH] Memuat model face-api...');
       await loadFaceApiModels();
@@ -4269,29 +4309,18 @@ async function captureFace() {
       throw new Error('Model face recognition gagal dimuat. Periksa koneksi internet.');
     }
 
-    console.log('[WAJAH] Model OK, meminta akses kamera...');
-    if (statusEl) { statusEl.textContent = '📷 Membuka kamera...'; statusEl.className = 'text-muted'; }
-
-    // Stop stream lama jika ada
-    stopVideo();
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
-    });
-
-    console.log('[WAJAH] Stream kamera berhasil didapat');
-    AppState.videoStream = stream;
+    console.log('[WAJAH] Model OK, melanjutkan deteksi wajah...');
 
     video.srcObject = stream;
     video.style.transform = 'scaleX(-1)';
 
     // Tunggu video benar-benar siap sebelum mulai deteksi
-    await new Promise((resolve, reject) => {
+    await new Promise((resolve) => {
       video.onloadedmetadata = () => {
         console.log('[WAJAH] Video metadata loaded, size:', video.videoWidth, 'x', video.videoHeight);
         resolve();
       };
-      video.onerror = (err) => reject(new Error('Video error: ' + err));
+      video.onerror = () => resolve(); // jangan reject; lanjutkan saja walau metadata gagal dibaca
       setTimeout(() => resolve(), 3000); // fallback timeout
     });
 
@@ -4439,24 +4468,14 @@ async function captureFace() {
     }, 500);
 
   } catch (e) {
-    console.error('[WAJAH] captureFace() error:', e.name, e.message);
+    console.error('[WAJAH] captureFace() error (setelah kamera terbuka):', e.name, e.message);
     stopVideo();
     if (AppState._captureFaceInterval) {
       clearInterval(AppState._captureFaceInterval);
       AppState._captureFaceInterval = null;
     }
 
-    let userMsg = 'Tidak bisa mengakses kamera: ' + e.message;
-    if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
-      userMsg = 'Akses kamera ditolak. Izinkan akses kamera di pengaturan browser Anda, lalu coba lagi.';
-    } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
-      userMsg = 'Kamera tidak ditemukan. Pastikan perangkat Anda memiliki kamera yang terhubung.';
-    } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
-      userMsg = 'Kamera sedang digunakan aplikasi lain. Tutup aplikasi lain dan coba lagi.';
-    } else if (e.name === 'OverconstrainedError') {
-      userMsg = 'Kamera tidak mendukung resolusi yang diminta. Coba dengan kamera lain.';
-    }
-
+    const userMsg = e.message || 'Gagal memuat model pengenalan wajah. Periksa koneksi internet dan coba lagi.';
     showAlert(userMsg, 'danger');
     if (statusEl) { statusEl.textContent = '❌ ' + userMsg; statusEl.className = 'text-danger'; }
     if (btnCapture) btnCapture.disabled = false;
