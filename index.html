@@ -601,9 +601,70 @@
         padding: 0.25rem 0.55rem;
       }
 
-      .table-scroll-mobile .data-table td .btn {
-        font-size: 0.75rem;
-        padding: 0.3rem 0.6rem;
+      /* ==================== MOBILE DATA CARD (pengganti tabel di HP) ==================== */
+    .mobile-data-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 0.875rem 1rem;
+      margin-bottom: 0.625rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .mobile-data-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .mobile-data-card-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .mobile-data-card-subtitle {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      margin-top: 0.0625rem;
+    }
+
+    .mobile-data-card-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem 0.75rem;
+      margin-top: 0.625rem;
+      padding-top: 0.625rem;
+      border-top: 1px dashed var(--border);
+    }
+
+    .mobile-data-card-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+
+    .mobile-data-card-label {
+      font-size: 0.625rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-weight: 600;
+    }
+
+    .mobile-data-card-value {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    @media (min-width: 640px) {
+      #absensi-card-list,
+      #karyawan-card-list,
+      #payroll-card-list {
+        display: none !important;
       }
     }
 
@@ -938,6 +999,85 @@
 
 .liveness-status-box.warn {
       background: rgba(245,158,11,0.9);
+    }
+
+    /* ==================== FACE SCAN STEP INDICATOR ==================== */
+    .scan-steps {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .scan-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .scan-step-circle {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--border);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      transition: var(--transition);
+    }
+
+    .scan-step.done .scan-step-circle {
+      background: var(--success);
+      color: white;
+    }
+
+    .scan-step.active .scan-step-circle {
+      background: var(--primary);
+      color: white;
+      animation: scanStepPulse 1.1s ease-in-out infinite;
+    }
+
+    @keyframes scanStepPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+
+    .scan-step-label {
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .scan-step.done .scan-step-label { color: var(--success); }
+    .scan-step.active .scan-step-label { color: var(--primary); }
+
+    .scan-step-connector {
+      width: 22px;
+      height: 2px;
+      background: var(--border);
+      margin-top: 13px;
+      transition: var(--transition);
+    }
+
+    .scan-step-connector.done { background: var(--success); }
+
+    .scan-hint-box {
+      margin-top: 0.875rem;
+      background: var(--primary-light);
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius);
+      padding: 0.625rem 0.875rem;
+      font-size: 0.8125rem;
+      color: #1e40af;
+      font-weight: 600;
+      text-align: center;
     }
 
     .camera-switch-btn {
@@ -3297,7 +3437,24 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
               </button>
             </div>
-            <div id="absen-self-status" class="device-status mt-3">Posisikan wajah di dalam oval...</div>
+            <div class="scan-steps" id="absen-self-scan-steps">
+              <div class="scan-step" data-step="detect">
+                <div class="scan-step-circle">1</div>
+                <div class="scan-step-label">Deteksi</div>
+              </div>
+              <div class="scan-step-connector" data-connector="1"></div>
+              <div class="scan-step" data-step="center">
+                <div class="scan-step-circle">2</div>
+                <div class="scan-step-label">Posisi</div>
+              </div>
+              <div class="scan-step-connector" data-connector="2"></div>
+              <div class="scan-step" data-step="smile">
+                <div class="scan-step-circle">3</div>
+                <div class="scan-step-label">Senyum</div>
+              </div>
+            </div>
+            <div class="scan-hint-box" id="absen-self-hint-box">Posisikan wajah di dalam oval</div>
+            <div id="absen-self-status" class="device-status mt-3 hidden">Posisikan wajah di dalam oval...</div>
             <button id="btn-absen-self-cancel" class="btn btn-outline mt-3">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               Batal
@@ -4007,6 +4164,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if(localStorage.getItem('sidebar_collapsed') === '1') {
         $('#sidebar').classList.add('collapsed');
       }
+    }
+  });
+
+  // Re-render tabel/card saat ukuran layar berubah melewati breakpoint mobile (640px),
+  // misalnya saat rotasi HP atau resize browser desktop
+  let _lastIsMobile = isMobileView();
+  window.addEventListener('resize', () => {
+    const nowMobile = isMobileView();
+    if(nowMobile !== _lastIsMobile) {
+      _lastIsMobile = nowMobile;
+      if(AppState.currentPage === 'absensi') initAbsensi();
     }
   });
 
@@ -4816,32 +4984,127 @@ function renderDashboardUser(data) {
     }, 800);
   }
 
+  // ===== Hitung data untuk hero card status hari ini =====
+  const todayRiwayat = (data.riwayat || []).filter(r => {
+    const d = new Date(r.tanggal);
+    const now = new Date();
+    return d.toDateString() === now.toDateString();
+  });
+  const jamDatang = todayRiwayat.find(r => r.jenis === 'DATANG');
+  const jamPulang = todayRiwayat.find(r => r.jenis === 'PULANG');
+
+  // Ring progress: persentase "kelengkapan" absen hari ini (0 / 50 / 100)
+  let ringPercent = 0;
+  if(data.sudahDatang) ringPercent += 50;
+  if(data.sudahPulang) ringPercent += 50;
+  const RING_R = 32, RING_CIRC = 2 * Math.PI * RING_R;
+  const ringOffset = RING_CIRC - (RING_CIRC * ringPercent / 100);
+  const ringColor = ringPercent === 100 ? '#34d399' : (ringPercent === 50 ? '#fbbf24' : 'rgba(255,255,255,0.25)');
+
+  // Estimasi gaji harian dari rata-rata (jika backend belum kirim gajiHarian, fallback ke total/hari)
+  const gajiHarian = data.gajiHarian || (data.totalHariKerja > 0 ? Math.round(data.totalGajiDiterima / data.totalHariKerja) : 0);
+  const totalHariTarget = data.totalHariKerjaTarget || 22; // fallback target hari kerja sebulan
+  const progressBulanPct = Math.min(100, Math.round((data.totalHariKerja / totalHariTarget) * 100));
+
+  const heroStatusBadge = data.sudahPulang
+    ? `<span style="background:rgba(16,185,129,0.2); color:#6ee7b7; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px;">SELESAI HARI INI</span>`
+    : data.sudahDatang
+      ? `<span style="background:rgba(251,191,36,0.2); color:#fde68a; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px;">SUDAH DATANG</span>`
+      : `<span style="background:rgba(239,68,68,0.2); color:#fca5a5; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px;">BELUM ABSEN</span>`;
+
+  const pulangStatusHtml = data.sudahPulang
+    ? `<div style="display:flex; align-items:center; gap:6px; color:#6ee7b7; font-size:14px; font-weight:600;">
+         <span style="width:8px; height:8px; border-radius:50%; background:#6ee7b7; display:inline-block;"></span>
+         Sudah absen pulang ${jamPulang ? '· ' + jamPulang.waktu : ''}
+       </div>`
+    : data.sudahDatang
+      ? `<div style="display:flex; align-items:center; gap:6px; color:#fca5a5; font-size:14px; font-weight:600;">
+           <span style="width:8px; height:8px; border-radius:50%; background:#fca5a5; display:inline-block;"></span>
+           Belum absen pulang
+         </div>
+         <button onclick="navigateTo('absen-manual')" style="margin-top:10px; background:white; color:#0f172a; border:none; padding:7px 14px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;">Absen Pulang →</button>`
+      : `<div style="display:flex; align-items:center; gap:6px; color:#fca5a5; font-size:14px; font-weight:600;">
+           <span style="width:8px; height:8px; border-radius:50%; background:#fca5a5; display:inline-block;"></span>
+           Belum absen hari ini
+         </div>
+         <button onclick="navigateTo('absen-manual')" style="margin-top:10px; background:white; color:#0f172a; border:none; padding:7px 14px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;">Absen Sekarang →</button>`;
+
+  // ===== Riwayat sebagai list timeline (bukan tabel) - lebih mudah dibaca di mobile =====
+  // Kelompokkan riwayat per tanggal supaya 1 baris = 1 hari (datang+pulang digabung)
+  const riwayatPerTanggal = {};
+  (data.riwayat || []).forEach(r => {
+    const key = formatDate(r.tanggal);
+    if(!riwayatPerTanggal[key]) riwayatPerTanggal[key] = { tanggal: r.tanggal, datang: null, pulang: null, anyInvalid: false };
+    if(r.jenis === 'DATANG') riwayatPerTanggal[key].datang = r.waktu;
+    if(r.jenis === 'PULANG') riwayatPerTanggal[key].pulang = r.waktu;
+    if(r.status !== 'VALID') riwayatPerTanggal[key].anyInvalid = true;
+  });
+  const riwayatRows = Object.values(riwayatPerTanggal).slice(0, 7);
+
+  const riwayatListHtml = riwayatRows.length > 0 ? riwayatRows.map(row => {
+    const dotColor = row.anyInvalid ? '#ef4444' : (row.datang ? '#10b981' : '#94a3b8');
+    const waktuText = row.anyInvalid
+      ? `<span style="color:#ef4444; font-weight:600;">Tidak hadir</span>`
+      : `<span style="color:#0f172a; font-weight:600;">${row.datang || '—'} ${row.pulang ? '- ' + row.pulang : ''}</span>`;
+    return `
+      <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border-light);">
+        <div style="width:6px; height:6px; border-radius:50%; background:${dotColor}; flex-shrink:0;"></div>
+        <div style="flex:1; font-size:12px; color:#475569;">${formatDate(row.tanggal)}</div>
+        <div style="font-size:12px;">${waktuText}</div>
+      </div>`;
+  }).join('') : `<div class="text-muted" style="text-align:center; padding:1rem 0; font-size:0.8125rem;">Belum ada riwayat absensi</div>`;
+
   container.innerHTML = `
-    <div class="grid grid-2">
-      <div class="card stat-card">
-        <div class="stat-icon blue">${ICONS.absensi}</div>
-        <div><div class="stat-value">${data.totalHariKerja}</div><div class="stat-label">Total Hari Kerja</div></div>
+    <!-- HERO CARD: Status absen hari ini dengan ring progress -->
+    <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%); border-radius:20px; padding:20px; color:white; position:relative; overflow:hidden; margin-bottom:14px;">
+      <div style="position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:rgba(255,255,255,0.06); border-radius:50%; pointer-events:none;"></div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:1; gap:0.5rem;">
+        <div>
+          <div style="font-size:12px; opacity:0.65; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px;">Hari ini</div>
+          <div style="font-size:15px; font-weight:700;">${new Date().toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long'})}</div>
+        </div>
+        ${heroStatusBadge}
       </div>
-      <div class="card stat-card">
-        <div class="stat-icon green">${ICONS.payroll}</div>
-        <div><div class="stat-value">${formatRupiah(data.totalGajiDiterima)}</div><div class="stat-label">Total Gaji Diterima</div></div>
+
+      <div style="display:flex; align-items:center; gap:16px; margin-top:18px; position:relative; z-index:1;">
+        <svg width="76" height="76" viewBox="0 0 76 76" style="flex-shrink:0;">
+          <circle cx="38" cy="38" r="${RING_R}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="7"/>
+          <circle cx="38" cy="38" r="${RING_R}" fill="none" stroke="${ringColor}" stroke-width="7" stroke-linecap="round"
+            stroke-dasharray="${RING_CIRC}" stroke-dashoffset="${ringOffset}" transform="rotate(-90 38 38)" style="transition:stroke-dashoffset 0.6s ease;"/>
+          <text x="38" y="35" text-anchor="middle" fill="white" font-size="15" font-weight="700">${jamDatang ? jamDatang.waktu : '--:--'}</text>
+          <text x="38" y="48" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="8">DATANG</text>
+        </svg>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; opacity:0.7; margin-bottom:6px;">Status pulang</div>
+          ${pulangStatusHtml}
+        </div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-header"><div class="card-title">Status Absen Hari Ini</div></div>
-      <div class="flex gap-2 items-center flex-wrap">
-        <span class="badge ${data.sudahDatang ? 'badge-green' : 'badge-red'}">Datang: ${data.sudahDatang ? 'Sudah' : 'Belum'}</span>
-        <span class="badge ${data.sudahPulang ? 'badge-green' : 'badge-red'}">Pulang: ${data.sudahPulang ? 'Sudah' : 'Belum'}</span>
+
+    <!-- 2 METRIC CARDS: Hari kerja bulan ini & Estimasi gaji -->
+    <div class="grid grid-2" style="margin-bottom:10px;">
+      <div class="card" style="padding:14px;">
+        <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; margin-bottom:6px;">Hari Kerja Bulan Ini</div>
+        <div style="display:flex; align-items:baseline; gap:4px;">
+          <span style="font-size:24px; font-weight:800; color:var(--text);">${data.totalHariKerja}</span>
+          <span style="font-size:12px; color:var(--text-muted);">/ ${totalHariTarget} hari</span>
+        </div>
+        <div style="background:#f1f5f9; height:6px; border-radius:3px; margin-top:8px; overflow:hidden;">
+          <div style="background:var(--primary); height:100%; width:${progressBulanPct}%; border-radius:3px; transition:width 0.6s ease;"></div>
+        </div>
+      </div>
+      <div class="card" style="padding:14px;">
+        <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; margin-bottom:6px;">Estimasi Gaji</div>
+        <div style="font-size:20px; font-weight:800; color:var(--success);">${formatRupiah(data.totalGajiDiterima)}</div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">total bulan ini</div>
       </div>
     </div>
+
+    <!-- RIWAYAT sebagai timeline list (bukan tabel horizontal-scroll) -->
     <div class="card">
-      <div class="card-header"><div class="card-title">Riwayat Absensi Terakhir</div></div>
-      <div class="table-container">
-        <table class="data-table">
-          <thead><tr><th>Tanggal</th><th>Jenis</th><th>Waktu</th><th>Status</th></tr></thead>
-          <tbody>${data.riwayat.map(r => `<tr><td>${formatDate(r.tanggal)}</td><td>${r.jenis}</td><td>${r.waktu}</td><td><span class="badge ${r.status==='VALID'?'badge-green':'badge-red'}">${r.status}</span></td></tr>`).join('')}</tbody>
-        </table>
-      </div>
+      <div class="card-header"><div class="card-title">Riwayat 7 Hari Terakhir</div></div>
+      <div>${riwayatListHtml}</div>
+      <button onclick="navigateTo('my-absensi')" class="btn btn-outline btn-sm btn-block" style="margin-top:0.75rem;">Lihat Semua Riwayat</button>
     </div>
   `;
 }
@@ -5908,12 +6171,74 @@ async function initAbsensi() {
   }
 }
 
+// Helper global: deteksi mode mobile (dipakai di beberapa fungsi render)
+function isMobileView() {
+  return window.innerWidth < 640;
+}
+
 function renderAbsensiTable(data) {
   const tbody = $('#table-absensi tbody');
   if(!data || data.length === 0) {
     renderTableEmptyState(tbody, 8, ICONS.absensi, 'Belum ada data absensi', 'Coba ubah filter tanggal/SPPG/Jabatan, atau tunggu karyawan melakukan absen.');
     return;
   }
+
+  // ===== MOBILE: render sebagai card list, bukan tabel horizontal-scroll =====
+  if(isMobileView()) {
+    const wrapper = tbody.closest('.table-scroll-mobile');
+    if(wrapper) wrapper.style.display = 'none';
+    let cardContainer = document.getElementById('absensi-card-list');
+    if(!cardContainer) {
+      cardContainer = document.createElement('div');
+      cardContainer.id = 'absensi-card-list';
+      wrapper.parentNode.insertBefore(cardContainer, wrapper);
+    }
+    cardContainer.innerHTML = data.map(a => {
+      const jenisColor = a.Jenis_Absen === 'DATANG' ? '#059669' : '#d97706';
+      const statusValid = a.Status_Validasi === 'VALID';
+      const skorNum = a.Skor_Kecocokan_Wajah ? (parseFloat(a.Skor_Kecocokan_Wajah)*100) : null;
+      const skorColor = skorNum === null ? 'var(--text)' : (skorNum >= 60 ? 'var(--success)' : 'var(--danger)');
+      const waktuStr = a.Waktu_Timestamp ? new Date(a.Waktu_Timestamp).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : '-';
+      return `
+        <div class="mobile-data-card">
+          <div class="mobile-data-card-top">
+            <div>
+              <div class="mobile-data-card-title">${escapeHtml(a.namaLengkap)}</div>
+              <div class="mobile-data-card-subtitle">${escapeHtml(a.jabatanDivisi||'-')} &middot; ${escapeHtml(a.sppg||'-')}</div>
+            </div>
+            <span class="badge ${statusValid ? 'badge-green' : 'badge-red'}">${escapeHtml(a.Status_Validasi)}</span>
+          </div>
+          <div class="mobile-data-card-row">
+            <div class="mobile-data-card-field">
+              <span class="mobile-data-card-label">Tanggal</span>
+              <span class="mobile-data-card-value">${formatDate(a.Tanggal)}</span>
+            </div>
+            <div class="mobile-data-card-field">
+              <span class="mobile-data-card-label">Jenis</span>
+              <span class="mobile-data-card-value" style="color:${jenisColor};">${escapeHtml(a.Jenis_Absen)}</span>
+            </div>
+            <div class="mobile-data-card-field">
+              <span class="mobile-data-card-label">Waktu</span>
+              <span class="mobile-data-card-value">${waktuStr}</span>
+            </div>
+            <div class="mobile-data-card-field">
+              <span class="mobile-data-card-label">Skor Wajah</span>
+              <span class="mobile-data-card-value" style="color:${skorColor};">${skorNum !== null ? skorNum.toFixed(1) + '%' : '-'}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    cardContainer.style.display = '';
+    return;
+  }
+
+  // ===== DESKTOP/TABLET: tabel seperti biasa =====
+  const wrapper = tbody.closest('.table-scroll-mobile');
+  if(wrapper) wrapper.style.display = '';
+  const cardContainer = document.getElementById('absensi-card-list');
+  if(cardContainer) cardContainer.style.display = 'none';
+
   tbody.innerHTML = data.map(a => `
     <tr>
       <td>${formatDate(a.Tanggal)}</td>
@@ -6258,6 +6583,7 @@ function resetAbsenFlow() {
   $('#absen-step-face').classList.add('hidden');
   $('#absen-step-face-self').classList.add('hidden');
   $('#absen-step-result').classList.add('hidden');
+  updateScanSteps('absen-self-scan-steps', 'absen-self-hint-box', 'detect', 'Posisikan wajah di dalam oval');
 }
 
 /**
@@ -6303,6 +6629,28 @@ async function startAbsenSelfFlow() {
   }
 }
 
+// Helper reusable: update tampilan step indicator (1=deteksi, 2=posisi, 3=senyum)
+// stepKey: 'detect' | 'center' | 'smile' | 'matched'
+function updateScanSteps(containerId, hintBoxId, stepKey, hintText) {
+  const container = document.getElementById(containerId);
+  const hintBox = document.getElementById(hintBoxId);
+  if(hintBox && hintText) hintBox.textContent = hintText;
+  if(!container) return;
+  const order = ['detect', 'center', 'smile'];
+  const doneUpTo = stepKey === 'matched' ? 3 : order.indexOf(stepKey);
+  order.forEach((key, idx) => {
+    const stepEl = container.querySelector(`.scan-step[data-step="${key}"]`);
+    if(!stepEl) return;
+    stepEl.classList.remove('active', 'done');
+    if(idx < doneUpTo) stepEl.classList.add('done');
+    else if(idx === doneUpTo && stepKey !== 'matched') stepEl.classList.add('active');
+    else if(stepKey === 'matched') stepEl.classList.add('done');
+  });
+  container.querySelectorAll('.scan-step-connector').forEach((conn, idx) => {
+    conn.classList.toggle('done', idx < doneUpTo);
+  });
+}
+
 async function startAbsenSelfFaceScan() {
   if(!AppState.modelsLoaded) await loadFaceApiModels();
   const video = $('#absen-self-video');
@@ -6331,6 +6679,8 @@ async function startAbsenSelfFaceScan() {
     const SMILE_THR_S = 0.70;
     let sPhase='center', attempts=0, done=false;
 
+    updateScanSteps('absen-self-scan-steps', 'absen-self-hint-box', 'detect', 'Posisikan wajah di dalam oval');
+
     const interval = setInterval(async () => {
       if(done) return;
       attempts++;
@@ -6348,6 +6698,7 @@ async function startAbsenSelfFaceScan() {
         if(guide) guide.className='face-guide';
         if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='👁 Arahkan wajah ke kamera';}
         if(statusEl) statusEl.textContent='Posisikan wajah di dalam oval...';
+        updateScanSteps('absen-self-scan-steps', 'absen-self-hint-box', 'detect', '👁 Arahkan wajah ke kamera');
         return;
       }
       const vW=video.videoWidth||640,vH=video.videoHeight||480;
@@ -6358,6 +6709,7 @@ async function startAbsenSelfFaceScan() {
         if(guide) guide.className='face-guide liveness-warn';
         if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='↔ Posisikan wajah di tengah';}
         if(statusEl) statusEl.textContent='Posisikan wajah di tengah oval...';
+        updateScanSteps('absen-self-scan-steps', 'absen-self-hint-box', 'center', '↔ Posisikan wajah di tengah oval');
         return;
       }
 
@@ -6366,11 +6718,13 @@ async function startAbsenSelfFaceScan() {
           if(guide) guide.className='face-guide liveness-warn';
           if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='🙂 Lihat kamera dan tersenyum';}
           if(statusEl) statusEl.textContent='Silakan lihat kamera dan tersenyum';
+          updateScanSteps('absen-self-scan-steps', 'absen-self-hint-box', 'smile', '🙂 Sempurna! Sekarang tersenyum sedikit');
           if(smileScore >= SMILE_THR_S) sPhase='done';
           break;
         case 'done':
           if(guide) guide.className='face-guide liveness-ok';
           if(statusBox){statusBox.className='liveness-status-box ok';statusBox.textContent='✅ Liveness OK — Mencocokkan...';}
+          updateScanSteps('absen-self-scan-steps', 'absen-self-hint-box', 'matched', '✅ Liveness OK — Mencocokkan wajah...');
           if(absenFaceDescriptor){
             const skor=(1-faceapi.euclideanDistance(det.descriptor,new Float32Array(absenFaceDescriptor)))*100;
             if(statusEl) statusEl.textContent=`Skor kecocokan: ${skor.toFixed(1)}%`;
