@@ -2083,6 +2083,7 @@
     .mb-1 { margin-bottom: 0.5rem; }
     .mb-2 { margin-bottom: 1rem; }
     .mt-2 { margin-top: 1rem; }
+    .mt-3 { margin-top: 1.5rem; }
     .flex { display: flex; }
     .flex-between { justify-content: space-between; }
     .items-center { align-items: center; }
@@ -2306,6 +2307,7 @@
       .device-time { font-size: 2.5rem; max-width: 100%; overflow-wrap: anywhere; }
       .device-ui { padding-left: 1.25rem; padding-right: 1.25rem; }
       .absen-mode-grid, .camera-container, .id-card-preview { max-width: 100%; }
+    }
     }
 
     @media (max-width: 1023px) {
@@ -3881,6 +3883,10 @@ function renderGridErrorState(container, err, retryFn) {
   if(btn && retryFn) btn.addEventListener('click', retryFn);
 }
 
+// ==================== VARIABEL GLOBAL (update foto) ====================
+let updateFotoBase64 = null;
+let updateFotoOriginalBase64 = null;
+
 // ==================== STATE ====================
 const AppState = {
   token: localStorage.getItem('absensi_token') || null,
@@ -4232,6 +4238,12 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#btn-to-register').addEventListener('click', () => navigateTo('register'));
   $('#btn-to-login').addEventListener('click', () => navigateTo('login'));
   $('#btn-forgot').addEventListener('click', showForgotPassword);
+  const btnBackLogin = document.getElementById('btn-back-login');
+  if(btnBackLogin) btnBackLogin.addEventListener('click', () => {
+    $('#forgot-password-section').classList.add('hidden');
+    $('#reset-password-section').classList.add('hidden');
+    $('#login-form-section').classList.remove('hidden');
+  });
   $('#btn-reset-password').addEventListener('click', doResetPassword);
   $('#btn-request-reset').addEventListener('click', doRequestReset);
   $('#btn-logout-dropdown').addEventListener('click', () => {
@@ -6182,11 +6194,6 @@ async function initAbsensi() {
   } catch(e) {
     renderTableErrorState(tbody, 8, e, initAbsensi);
   }
-}
-
-// Helper global: deteksi mode mobile (dipakai di beberapa fungsi render)
-function isMobileView() {
-  return window.innerWidth < 640;
 }
 
 function renderAbsensiTable(data) {
