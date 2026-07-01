@@ -3122,6 +3122,15 @@
       }
     }
 
+    /* Halaman Absen Manual: bottom bar disembunyikan via JS, jadi hilangkan
+       padding-bottom ekstra dari #content-area agar tidak ada ruang kosong
+       yang menyebabkan scroll ganda ("halaman di dalam halaman") */
+    #content-area:has(#page-absen-manual:not(.hidden)) {
+      padding-bottom: 0 !important;
+    }
+
+    /* ===== BOTTOM BAR EXTENDED STYLES ===== */
+
     /* ===== BOTTOM BAR EXTENDED STYLES ===== */
     @media (max-width: 1023px) {
       #mobile-bottom-bar {
@@ -4555,6 +4564,17 @@
       justify-content: center;
       min-height: calc(100vh - 64px);
       padding: 1.5rem 1rem;
+    }
+
+    /* Parent (#main-content > #content-area) sudah flex-container yang
+       otomatis mengisi tinggi viewport, jadi min-height:100vh di sini
+       dihapus khusus mobile agar tidak menumpuk tinggi dan memicu
+       scrollbar ganda */
+    @media (max-width: 1023px) {
+      .absen-page-wrapper,
+      .absen-step-container {
+        min-height: 0;
+      }
     }
     
     .absen-step-card {
@@ -9124,30 +9144,89 @@ async function saveRegisterDevice() {
 // ==================== DATA KARYAWAN ====================
 async function initDataKaryawan() {
   const tbody = $('#table-karyawan tbody');
+  const cardContainer = document.getElementById('karyawan-card-list');
+  if(cardContainer) { cardContainer.innerHTML = ''; cardContainer.style.display = 'none'; }
+  const wrapper = tbody ? tbody.closest('.table-scroll-mobile') : null;
+  if(wrapper) wrapper.style.display = '';
   renderTableSkeleton(tbody, 8, 5);
   try {
     const res = await apiCallWithToken('getDataKaryawan', {});
-    if(!res.karyawan || res.karyawan.length === 0) {
-      renderTableEmptyState(tbody, 8, ICONS.karyawan, 'Belum ada data karyawan', 'Karyawan akan muncul di sini setelah registrasi berhasil.');
-      return;
-    }
-    tbody.innerHTML = res.karyawan.map(k => `
-      <tr>
-        <td data-label="Nama">${escapeHtml(k.namaLengkap)}</td>
-        <td data-label="Role"><span class="badge badge-blue">${escapeHtml(k.role||'')}</span></td>
-        <td data-label="Jabatan">${escapeHtml(k.jabatanDivisi)}</td>
-        <td data-label="JK">${escapeHtml(k.jenisKelamin)}</td>
-        <td data-label="Email">${escapeHtml(k.email)}</td>
-        <td data-label="Whatsapp">${escapeHtml(k.noWhatsapp)}</td>
-        <td data-label="Mulai Kerja">${formatDate(k.tanggalMulaiKerja)}</td>
-        <td data-label="SPPG">${escapeHtml(k.sppg)}</td>
-        <td data-label="Gaji Harian">${formatRupiah(k.gajiHarian)}</td>
-        <td data-label="Status"><span class="badge ${k.statusAktif ? 'badge-green' : 'badge-red'}">${k.statusAktif ? 'Aktif' : 'Nonaktif'}</span></td>
-      </tr>
-    `).join('');
+    renderDataKaryawanView(res.karyawan);
   } catch(e) {
     renderTableErrorState(tbody, 8, e, initDataKaryawan);
   }
+}
+
+function renderDataKaryawanView(data) {
+  const tbody = $('#table-karyawan tbody');
+  if(!data || data.length === 0) {
+    renderTableEmptyState(tbody, 8, ICONS.karyawan, 'Belum ada data karyawan', 'Karyawan akan muncul di sini setelah registrasi berhasil.');
+    return;
+  }
+
+  // ===== MOBILE: render sebagai card list =====
+  if(isMobileView()) {
+    const wrapper = tbody.closest('.table-scroll-mobile');
+    if(wrapper) wrapper.style.display = 'none';
+    let cardContainer = document.getElementById('karyawan-card-list');
+    if(!cardContainer) {
+      cardContainer = document.createElement('div');
+      cardContainer.id = 'karyawan-card-list';
+      wrapper.parentNode.insertBefore(cardContainer, wrapper);
+    }
+    cardContainer.innerHTML = data.map(k => `
+      <div class="mobile-data-card">
+        <div class="mobile-data-card-top">
+          <div>
+            <div class="mobile-data-card-title">${escapeHtml(k.namaLengkap)}</div>
+            <div class="mobile-data-card-subtitle">${escapeHtml(k.jabatanDivisi||'-')} &middot; ${escapeHtml(k.sppg||'-')}</div>
+          </div>
+          <span class="badge ${k.statusAktif ? 'badge-green' : 'badge-red'}">${k.statusAktif ? 'Aktif' : 'Nonaktif'}</span>
+        </div>
+        <div class="mobile-data-card-row">
+          <div class="mobile-data-card-field">
+            <span class="mobile-data-card-label">Role</span>
+            <span class="mobile-data-card-value">${escapeHtml(k.role||'-')}</span>
+          </div>
+          <div class="mobile-data-card-field">
+            <span class="mobile-data-card-label">Gaji Harian</span>
+            <span class="mobile-data-card-value">${formatRupiah(k.gajiHarian)}</span>
+          </div>
+          <div class="mobile-data-card-field">
+            <span class="mobile-data-card-label">Mulai Kerja</span>
+            <span class="mobile-data-card-value">${formatDate(k.tanggalMulaiKerja)}</span>
+          </div>
+          <div class="mobile-data-card-field">
+            <span class="mobile-data-card-label">WhatsApp</span>
+            <span class="mobile-data-card-value">${escapeHtml(k.noWhatsapp||'-')}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    cardContainer.style.display = '';
+    return;
+  }
+
+  // ===== DESKTOP/TABLET: tabel seperti biasa =====
+  const wrapper = tbody.closest('.table-scroll-mobile');
+  if(wrapper) wrapper.style.display = '';
+  const cardContainer = document.getElementById('karyawan-card-list');
+  if(cardContainer) cardContainer.style.display = 'none';
+
+  tbody.innerHTML = data.map(k => `
+    <tr>
+      <td data-label="Nama">${escapeHtml(k.namaLengkap)}</td>
+      <td data-label="Role"><span class="badge badge-blue">${escapeHtml(k.role||'')}</span></td>
+      <td data-label="Jabatan">${escapeHtml(k.jabatanDivisi)}</td>
+      <td data-label="JK">${escapeHtml(k.jenisKelamin)}</td>
+      <td data-label="Email">${escapeHtml(k.email)}</td>
+      <td data-label="Whatsapp">${escapeHtml(k.noWhatsapp)}</td>
+      <td data-label="Mulai Kerja">${formatDate(k.tanggalMulaiKerja)}</td>
+      <td data-label="SPPG">${escapeHtml(k.sppg)}</td>
+      <td data-label="Gaji Harian">${formatRupiah(k.gajiHarian)}</td>
+      <td data-label="Status"><span class="badge ${k.statusAktif ? 'badge-green' : 'badge-red'}">${k.statusAktif ? 'Aktif' : 'Nonaktif'}</span></td>
+    </tr>
+  `).join('');
 }
 
 // ==================== PAYROLL ====================
