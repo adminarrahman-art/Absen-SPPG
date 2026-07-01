@@ -6806,6 +6806,96 @@ function apiCallWithToken(funcName, extraData, opts) {
   return apiCall(funcName, data, opts);
 }
 
+// ==================== OFFLINE QUEUE — SUBMIT ABSEN ====================
+const ABSEN_QUEUE_KEY = 'absensi_pending_queue';
+
+function _getAbsenQueue() {
+  try {
+    const raw = localStorage.getItem(ABSEN_QUEUE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function _saveAbsenQueue(queue) {
+  try {
+    localStorage.setItem(ABSEN_QUEUE_KEY, JSON.stringify(queue));
+  } catch (e) {
+    console.error('[ABSEN_QUEUE] Gagal simpan antrean:', e);
+  }
+}
+
+// Deteksi apakah error berasal dari masalah jaringan (bukan penolakan server yang valid).
+// Error validasi server (mis. "Wajah tidak dikenali", "di luar radius") TIDAK di-retry,
+// karena mengulang tidak akan mengubah hasil dan bisa membuat pengguna bingung.
+function _isNetworkError(err) {
+  const msg = (err && err.message) ? err.message : String(err || '');
+  return /failed to fetch|network|load failed|timeout|ERR_INTERNET|ERR_CONNECTION/i.test(msg);
+}
+
+// Kirim absen dengan mekanisme antre otomatis jika koneksi drop.
+// funcName: 'recordAbsensiSelf' atau 'recordAbsensi'
+// Mengembalikan Promise yang resolve dengan hasil server, ATAU
+// resolve dengan { success: true, queued: true, message: '...' } jika masuk antrean offline.
+async function queueAbsenSelf(funcName, payload) {
+  try {
+    const res = await apiCallWithToken(funcName, payload);
+    return res;
+  } catch (err) {
+    if (_isNetworkError(err)) {
+      const queue = _getAbsenQueue();
+      queue.push({
+        funcName: funcName,
+        payload: payload,
+        token: AppState.token,
+        savedAt: Date.now()
+      });
+      _saveAbsenQueue(queue);
+      return {
+        success: true,
+        queued: true,
+        message: 'Koneksi terputus. Absen disimpan dan akan dikirim otomatis saat online kembali.'
+      };
+    }
+    // Bukan error jaringan (mis. validasi server) → lempar seperti biasa
+    throw err;
+  }
+}
+
+// Proses ulang semua absen yang masih tertunda di antrean.
+async function processAbsenQueue() {
+  const queue = _getAbsenQueue();
+  if (!queue.length) return;
+
+  const remaining = [];
+  for (const item of queue) {
+    try {
+      const data = { token: item.token || AppState.token, ...item.payload };
+      const res = await apiCall(item.funcName, data);
+      if (res && res.success === false) {
+        // Ditolak server (mis. sudah absen duluan) — buang dari antrean, tidak perlu retry lagi
+        console.warn('[ABSEN_QUEUE] Item ditolak server, dibuang dari antrean:', res.message);
+      } else {
+        showAlert('Absen tertunda berhasil terkirim' + (res && res.nama ? ' (' + res.nama + ')' : ''), 'success');
+      }
+    } catch (err) {
+      if (_isNetworkError(err)) {
+        // Masih offline, simpan lagi untuk dicoba nanti
+        remaining.push(item);
+      } else {
+        console.warn('[ABSEN_QUEUE] Item gagal permanen, dibuang dari antrean:', err);
+      }
+    }
+  }
+  _saveAbsenQueue(remaining);
+}
+
+// Proses antrean saat koneksi kembali online, dan saat halaman pertama kali dimuat.
+window.addEventListener('online', () => { processAbsenQueue(); });
+window.addEventListener('DOMContentLoaded', () => { processAbsenQueue(); });
+
+
 // ==================== PREFETCH ====================
 // Memuat data yang sering dipakai ke cache di background,
 // sehingga ketika user navigasi ke halaman tersebut sudah tersedia instan.
@@ -7391,6 +7481,16 @@ async function initRegister() {
   resetRegFotoUI();
   resetRegWajahUI();
 
+  // Pulihkan draft yang tersimpan (jika ada), lalu pasang autosave
+  restoreRegDraft();
+  attachRegAutosave();
+  if (RegState.fotoBase64) {
+    const circle = document.getElementById('reg-foto-circle');
+    const status = document.getElementById('reg-foto-status');
+    if (circle) { circle.innerHTML = `<img src="${RegState.fotoBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; circle.classList.add('has-foto'); }
+    if (status) status.textContent = 'Foto tersimpan dari draft sebelumnya';
+  }
+
   // Pasang listener step
   const btnNext1 = document.getElementById('btn-reg-next-1');
   const btnBack1 = document.getElementById('btn-reg-back-1');
@@ -7464,6 +7564,108 @@ async function initRegister() {
   } catch (e) {
     console.error('[REGISTER] Gagal memuat master data:', e);
     showAlert('Gagal memuat data SPPG/Jabatan: ' + e + '. Coba refresh halaman.', 'warning');
+  }
+}
+
+// ==================== AUTOSAVE DRAFT REGISTRASI ====================
+const REG_DRAFT_KEY = 'absensi_reg_draft';
+
+// Field yang di-autosave. Password TIDAK disimpan demi keamanan —
+// user akan diminta mengetik ulang password saat draft dipulihkan.
+const REG_DRAFT_FIELDS = [
+  'reg-username', 'reg-nama', 'reg-tempat-lahir', 'reg-tanggal-lahir',
+  'reg-email', 'reg-whatsapp', 'reg-sppg', 'reg-sppg-lainnya',
+  'reg-tanggal-mulai', 'reg-jabatan', 'reg-jabatan-lainnya',
+  'reg-gaji', 'reg-bank', 'reg-rekening'
+];
+
+function saveRegDraft() {
+  try {
+    const draft = { step: RegState.currentStep, fields: {} };
+    REG_DRAFT_FIELDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) draft.fields[id] = el.value;
+    });
+    const jkEl = document.querySelector('input[name="reg-jk"]:checked');
+    draft.jenisKelamin = jkEl ? jkEl.value : '';
+    const setujuEl = document.getElementById('reg-setuju');
+    draft.setuju = setujuEl ? setujuEl.checked : false;
+    // Foto & face descriptor ikut disimpan agar step 2/3 tidak perlu diulang
+    draft.fotoBase64 = RegState.fotoBase64 || null;
+    draft.fotoOriginalBase64 = RegState.fotoOriginalBase64 || null;
+    draft.faceDescriptor = RegState.faceDescriptor || null;
+    draft.savedAt = Date.now();
+    localStorage.setItem(REG_DRAFT_KEY, JSON.stringify(draft));
+  } catch (e) {
+    console.error('[REG_DRAFT] Gagal menyimpan draft:', e);
+  }
+}
+
+function loadRegDraft() {
+  try {
+    const raw = localStorage.getItem(REG_DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearRegDraft() {
+  localStorage.removeItem(REG_DRAFT_KEY);
+}
+
+// Pulihkan draft ke form. Dipanggil sekali saat initRegister().
+function restoreRegDraft() {
+  const draft = loadRegDraft();
+  if (!draft) return;
+
+  // Draft lebih lama dari 24 jam dianggap kedaluwarsa, tidak dipulihkan.
+  if (Date.now() - (draft.savedAt || 0) > 24 * 60 * 60 * 1000) {
+    clearRegDraft();
+    return;
+  }
+
+  Object.keys(draft.fields || {}).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = draft.fields[id];
+  });
+  if (draft.jenisKelamin) {
+    const jkEl = document.querySelector('input[name="reg-jk"][value="' + draft.jenisKelamin + '"]');
+    if (jkEl) jkEl.checked = true;
+  }
+  const setujuEl = document.getElementById('reg-setuju');
+  if (setujuEl) setujuEl.checked = !!draft.setuju;
+
+  RegState.fotoBase64 = draft.fotoBase64 || null;
+  RegState.fotoOriginalBase64 = draft.fotoOriginalBase64 || null;
+  RegState.faceDescriptor = draft.faceDescriptor || null;
+
+  if (draft.fields && (draft.fields['reg-username'] || draft.fields['reg-nama'])) {
+    showAlert('Draft registrasi sebelumnya dipulihkan. Silakan isi ulang password.', 'info');
+  }
+}
+
+// Pasang autosave pada semua field yang relevan (dipanggil sekali saat initRegister()).
+function attachRegAutosave() {
+  REG_DRAFT_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el._autosaveBound) {
+      el.addEventListener('input', saveRegDraft);
+      el.addEventListener('change', saveRegDraft);
+      el._autosaveBound = true;
+    }
+  });
+  document.querySelectorAll('input[name="reg-jk"]').forEach(el => {
+    if (!el._autosaveBound) {
+      el.addEventListener('change', saveRegDraft);
+      el._autosaveBound = true;
+    }
+  });
+  const setujuEl = document.getElementById('reg-setuju');
+  if (setujuEl && !setujuEl._autosaveBound) {
+    setujuEl.addEventListener('change', saveRegDraft);
+    setujuEl._autosaveBound = true;
   }
 }
 
@@ -8117,6 +8319,7 @@ async function doRegister() {
   setButtonLoading(btnReg, true, 'Mendaftarkan...');
   try {
     await apiCall('registerUser', data);
+    clearRegDraft();
     showAlert('Registrasi berhasil! Silakan login.', 'success');
     setTimeout(() => navigateTo('login'), 2000);
   } catch(e) {
@@ -10565,7 +10768,7 @@ async function startAbsenSelfFaceScan() {
             if(skor > FACE_MATCH_THRESHOLD){
               done=true;clearInterval(interval);stopVideo();
               try {
-                const res2=await apiCallWithToken('recordAbsensiSelf',{idUser:absenIdUser,skorKecocokan:skor/100,statusValidasi:'VALID',lat:absenLat,lng:absenLng});
+                const res2=await queueAbsenSelf('recordAbsensiSelf',{idUser:absenIdUser,skorKecocokan:skor/100,statusValidasi:'VALID',lat:absenLat,lng:absenLng});
                 if(res2.success === false){
                   showAbsenSelfResult(false, res2.message || 'Absen tidak berhasil.');
                 } else {
@@ -10797,7 +11000,7 @@ async function startAbsenFaceScan() {
             if(skor>FACE_MATCH_THRESHOLD){
               done=true;clearInterval(interval);stopVideo();
               try {
-                const res2=await apiCallWithToken('recordAbsensiSelf',{idUser:absenIdUser,skorKecocokan:skor/100,statusValidasi:'VALID',lat:absenLat,lng:absenLng});
+                const res2=await queueAbsenSelf('recordAbsensiSelf',{idUser:absenIdUser,skorKecocokan:skor/100,statusValidasi:'VALID',lat:absenLat,lng:absenLng});
                 if(res2.success === false){
                   showAbsenResult(false, res2.message || 'Absen tidak berhasil.');
                 } else {
