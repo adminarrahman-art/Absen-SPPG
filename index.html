@@ -4853,6 +4853,211 @@
       }
     }
     
+/* ==================== CRUD ADMIN/AKUNTAN: CHECKBOX, BATCH DELETE, DETAIL CARD ==================== */
+
+    /* --- Kolom checkbox di tabel desktop/tablet --- */
+    .data-table th.crud-check-col,
+    .data-table td.crud-check-col {
+      width: 40px;
+      text-align: center;
+      padding-left: 0.75rem;
+      padding-right: 0.25rem;
+    }
+    .crud-row-checkbox,
+    .crud-master-checkbox {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
+    /* Baris yang bisa diklik untuk lihat detail */
+    .data-table tbody tr.crud-clickable-row {
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+    .data-table tbody tr.crud-clickable-row:hover {
+      background-color: var(--primary-light);
+    }
+    .data-table tbody tr.crud-row-selected {
+      background-color: var(--primary-light);
+    }
+
+    /* --- Mobile data card: mode seleksi (long-press / icon checklist) --- */
+    .mobile-data-card {
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .mobile-data-card.crud-selection-mode {
+      padding-left: 2.75rem;
+    }
+    .mobile-data-card.crud-card-selected {
+      outline: 2px solid var(--primary);
+      outline-offset: -1px;
+      background: var(--primary-light);
+    }
+    .mobile-data-card-select-icon {
+      display: none;
+      position: absolute;
+      top: 0.875rem;
+      left: 0.875rem;
+      width: 22px;
+      height: 22px;
+      border-radius: var(--radius-full);
+      border: 2px solid var(--border-dark);
+      background: var(--surface);
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+    .mobile-data-card.crud-selection-mode .mobile-data-card-select-icon {
+      display: flex;
+    }
+    .mobile-data-card.crud-card-selected .mobile-data-card-select-icon {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .mobile-data-card.crud-card-selected .mobile-data-card-select-icon svg {
+      display: block;
+    }
+    .mobile-data-card-select-icon svg { display: none; width: 14px; height: 14px; }
+
+    /* --- Floating Action Bar: "Hapus Data Terpilih (X item)" --- */
+    .crud-batch-fab {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%) translateY(120%);
+      z-index: 1050;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--text);
+      color: #fff;
+      padding: 0.75rem 1rem 0.75rem 1.25rem;
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-2xl);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      max-width: calc(100vw - 2rem);
+    }
+    .crud-batch-fab.show {
+      transform: translateX(-50%) translateY(0);
+    }
+    .crud-batch-fab-label {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .crud-batch-fab .btn {
+      min-height: 36px;
+      padding: 0.5rem 1rem;
+      font-size: 0.8125rem;
+      white-space: nowrap;
+    }
+    .crud-batch-fab-cancel {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-full);
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .crud-batch-fab-cancel:hover { background: rgba(255,255,255,0.22); }
+
+    @media (max-width: 1023px) {
+      .crud-batch-fab {
+        bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+      }
+    }
+
+    /* --- Tombol aksi Edit/Hapus di header modal detail card --- */
+    .crud-detail-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-left: auto;
+      margin-right: 0.5rem;
+    }
+    .crud-detail-actions .btn {
+      min-height: 32px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.75rem;
+    }
+    .crud-detail-actions .btn svg { width: 14px; height: 14px; }
+
+    /* --- Header table dengan toolbar batch select (desktop) --- */
+    .crud-table-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+    .crud-table-toolbar-info {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* --- Modal konfirmasi hapus (dipakai untuk delete satuan & batch) --- */
+    #modal-crud-confirm-delete .modal { max-width: 420px; }
+    .crud-confirm-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-full);
+      background: var(--danger-light);
+      color: var(--danger);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+    }
+    .crud-confirm-text {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    .crud-confirm-text strong { color: var(--text); }
+
+    /* --- Field readonly vs editable di dalam detail card --- */
+    .crud-field-view {
+      padding: 0.625rem 0;
+      border-bottom: 1px dashed var(--border);
+    }
+    .crud-field-view:last-child { border-bottom: none; }
+    .crud-field-view-label {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+    .crud-field-view-value {
+      font-size: 0.875rem;
+      color: var(--text);
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    @media (min-width: 641px) {
+      .absen-page-wrapper {
+        padding: 2rem 1.5rem;
+      }
+    }
+  </style>
+
     @media (min-width: 641px) {
       .absen-page-wrapper {
         padding: 2rem 1.5rem;
@@ -5123,6 +5328,37 @@
 </div>
 
 <!-- ==================== MODAL LOGOUT KONFIRMASI ==================== -->
+
+<!-- Modal Konfirmasi Hapus Generik (CRUD Admin/Akuntan) -->
+      <div id="modal-crud-confirm-delete" class="modal-overlay">
+        <div class="modal">
+          <div class="modal-body" style="padding: 2rem 1.5rem 1rem; text-align:center;">
+            <div class="crud-confirm-icon">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </div>
+            <div id="crud-confirm-delete-text" class="crud-confirm-text">Apakah Anda yakin ingin menghapus data ini?</div>
+          </div>
+          <div class="modal-footer" style="justify-content:center; border-top:none; padding-top:0.5rem;">
+            <button id="btn-crud-confirm-delete-yes" class="btn btn-danger">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Ya, Hapus
+            </button>
+            <button class="btn btn-outline modal-cancel">Batal</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Action Bar: Batch Delete -->
+      <div id="crud-batch-fab" class="crud-batch-fab">
+        <span class="crud-batch-fab-label" id="crud-batch-fab-label">0 item dipilih</span>
+        <button class="btn btn-danger" id="crud-batch-fab-delete-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Hapus Data Terpilih
+        </button>
+        <button class="crud-batch-fab-cancel" id="crud-batch-fab-cancel-btn" title="Batalkan pilihan">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
 <div id="modal-logout-confirm" class="modal-overlay">
   <div class="modal" style="max-width:360px;">
     <div class="modal-body" style="padding: 2rem 1.5rem 1rem;">
