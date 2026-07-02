@@ -7332,6 +7332,8 @@ function navigateTo(page) {
   }
   document.querySelectorAll('.mobile-data-card.crud-selection-mode, .mobile-data-card.crud-card-selected')
     .forEach(c => { c.classList.remove('crud-selection-mode'); c.classList.remove('crud-card-selected'); });
+    CrudState.currentMenu = null;
+  CrudState.currentData = [];
 
   // Tampilkan/sembunyikan layout sesuai status halaman (auth vs app)
   const isAuthPage = (page === 'login' || page === 'register');
@@ -12202,7 +12204,7 @@ function crudUpdateBatchFab() {
   const label = document.getElementById('crud-batch-fab-label');
   if (!fab || !label) return;
   const count = CrudState.selectedIds.size;
-  if (count > 0) {
+  if (count > 0 && CrudState.currentMenu) {
     label.textContent = count + ' item dipilih';
     fab.classList.add('show');
   } else {
