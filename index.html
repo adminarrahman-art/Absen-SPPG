@@ -1394,6 +1394,85 @@
     .camera-switch-btn:active { transform: rotate(180deg) scale(0.92); }
     .camera-switch-btn svg { width: 20px; height: 20px; }
 
+    /* ==================== QR VIEWFINDER OVERLAY (C2 FIX) ==================== */
+.qr-viewfinder-wrap {
+position: relative;
+width: 100%;
+max-width: 420px;
+margin: 0 auto;
+}
+.qr-viewfinder-wrap #absen-qr-video,
+.qr-viewfinder-wrap #device-qr-video {
+width: 100%;
+}
+.qr-viewfinder {
+position: absolute;
+inset: 0;
+pointer-events: none;
+display: flex;
+align-items: center;
+justify-content: center;
+z-index: 5;
+}
+.qr-viewfinder-frame {
+width: 62%;
+aspect-ratio: 1 / 1;
+max-width: 260px;
+position: relative;
+}
+.qr-viewfinder-frame::before {
+content: '';
+position: absolute;
+inset: 0;
+background: rgba(0,0,0,0.35);
+/* "Lubang" di tengah menggunakan box-shadow untuk efek spotlight */
+box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+border-radius: 12px;
+}
+.qr-viewfinder-corner {
+position: absolute;
+width: 28px;
+height: 28px;
+border: 3.5px solid #3b82f6;
+filter: drop-shadow(0 2px 6px rgba(59,130,246,0.5));
+}
+.qr-viewfinder-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
+.qr-viewfinder-corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
+.qr-viewfinder-corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
+.qr-viewfinder-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
+.qr-viewfinder-hint {
+position: absolute;
+bottom: -36px;
+left: 50%;
+transform: translateX(-50%);
+background: rgba(15,23,42,0.85);
+color: white;
+font-size: 0.75rem;
+font-weight: 600;
+padding: 0.35rem 0.85rem;
+border-radius: 999px;
+white-space: nowrap;
+backdrop-filter: blur(4px);
+letter-spacing: 0.02em;
+}
+.qr-viewfinder-scanline {
+position: absolute;
+left: 8%;
+right: 8%;
+height: 2px;
+background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+box-shadow: 0 0 12px rgba(59,130,246,0.8);
+animation: qrScanline 2.2s ease-in-out infinite;
+border-radius: 2px;
+}
+@keyframes qrScanline {
+0%, 100% { top: 10%; opacity: 0.4; }
+50% { top: 85%; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+.qr-viewfinder-scanline { animation: none; top: 50%; opacity: 0.8; }
+}
+
     /* ==================== CAMERA/MODEL LOADING OVERLAY ==================== */
     .camera-loading-overlay {
       position: absolute;
@@ -2945,6 +3024,28 @@
       #myabs-summary .stat-value { font-size: 1.1rem; }
       #myabs-summary .stat-label { font-size: 0.65rem; }
 
+      /* ===== C7 FIX: Ring progress Dashboard User — lebih besar & mudah dibaca di mobile ===== */
+.dash-user-ring-svg {
+transition: all 0.3s ease;
+}
+@media (max-width: 639px) {
+.dash-user-ring-svg {
+width: 96px !important;
+height: 96px !important;
+}
+/* Perbesar font jam & label DATANG agar terbaca di HP kecil */
+.dash-user-ring-svg text:first-of-type {
+font-size: 18px !important;
+}
+.dash-user-ring-svg text:last-of-type {
+font-size: 9px !important;
+}
+/* Kurangi stroke-width agar tidak terlihat seperti "donut" di diameter kecil */
+.dash-user-ring-svg circle {
+stroke-width: 5 !important;
+}
+}
+
       /* ===== Filter bar (Payroll/Absensi/Catatan Aktivitas/My Absensi): input & tombol sejajar, hemat ruang ===== */
       #filter-payroll-nama, #filter-payroll-sppg,
       #filter-abs-sppg, #filter-abs-jabatan, #filter-abs-tanggal,
@@ -4156,6 +4257,55 @@
     }
 
     .reg-step-line.done { background: var(--success); }
+    /* ==================== REGISTRATION PROGRESS — MOBILE ONLY (C3 FIX) ==================== */
+.reg-progress-mobile {
+display: none;
+flex-direction: column;
+gap: 0.5rem;
+margin-bottom: 1.25rem;
+padding: 0.75rem 0.875rem;
+background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+border: 1px solid #bfdbfe;
+border-radius: var(--radius-lg);
+}
+.reg-progress-mobile-text {
+display: flex;
+justify-content: space-between;
+align-items: center;
+font-size: 0.8125rem;
+color: var(--text);
+}
+.reg-progress-mobile-step {
+color: var(--text-secondary);
+}
+.reg-progress-mobile-step strong {
+color: var(--primary-dark);
+font-size: 1rem;
+font-weight: 800;
+}
+.reg-progress-mobile-label {
+font-weight: 700;
+color: var(--primary-dark);
+}
+.reg-progress-mobile-bar {
+height: 6px;
+background: rgba(59,130,246,0.15);
+border-radius: 999px;
+overflow: hidden;
+}
+.reg-progress-mobile-fill {
+height: 100%;
+background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+border-radius: 999px;
+transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (max-width: 639px) {
+.reg-progress-mobile { display: flex; }
+.reg-step-bar { display: none; }
+}
+@media (min-width: 640px) {
+.reg-progress-mobile { display: none !important; }
+}
 
     /* Panel tiap step */
     .reg-panel { display: none; }
@@ -5137,23 +5287,33 @@ display: flex !important;
         Registrasi Karyawan
       </div>
 
-      <!-- Step bar -->
-      <div class="reg-step-bar" id="reg-step-bar">
-        <div class="reg-step-item active" data-step="1">
-          <div class="reg-step-circle">1</div>
-          <div class="reg-step-label">Data Diri</div>
-        </div>
-        <div class="reg-step-line" id="reg-step-line-1"></div>
-        <div class="reg-step-item" data-step="2">
-          <div class="reg-step-circle">2</div>
-          <div class="reg-step-label">Foto Profil</div>
-        </div>
-        <div class="reg-step-line" id="reg-step-line-2"></div>
-        <div class="reg-step-item" data-step="3">
-          <div class="reg-step-circle">3</div>
-          <div class="reg-step-label">Data Wajah</div>
-        </div>
-      </div>
+      <!-- Progress mobile (hanya tampil di layar kecil, menggantikan step bar) -->
+      <div class="reg-progress-mobile" id="reg-progress-mobile">
+        <div class="reg-progress-mobile-text">
+          <span class="reg-progress-mobile-step">Step <strong id="reg-progress-step-num">1</strong> dari 3</span>
+          <span class="reg-progress-mobile-label" id="reg-progress-step-label">Data Diri</span>
+          </div>
+          <div class="reg-progress-mobile-bar">
+            <div class="reg-progress-mobile-fill" id="reg-progress-mobile-fill" style="width:33.33%"></div>
+            </div>
+            </div>
+            <!-- Step bar desktop (tetap seperti semula) -->
+            <div class="reg-step-bar" id="reg-step-bar">
+              <div class="reg-step-item active" data-step="1">
+                <div class="reg-step-circle">1</div>
+                <div class="reg-step-label">Data Diri</div>
+                </div>
+                <div class="reg-step-line" id="reg-step-line-1"></div>
+                <div class="reg-step-item" data-step="2">
+                  <div class="reg-step-circle">2</div>
+                  <div class="reg-step-label">Foto Profil</div>
+                  </div>
+                  <div class="reg-step-line" id="reg-step-line-2"></div>
+                  <div class="reg-step-item" data-step="3">
+                    <div class="reg-step-circle">3</div>
+                    <div class="reg-step-label">Data Wajah</div>
+                    </div>
+                    </div>
 
       <!-- STEP 1: Data diri -->
       <div class="reg-panel active" id="reg-panel-1">
@@ -5969,9 +6129,20 @@ display: flex !important;
               <select id="qr-camera-select" class="form-select"></select>
             </div>
             <div class="camera-container">
-              <div id="device-qr-video" style="width:100%; max-width:420px;"></div>
-            </div>
-            <div class="device-status mt-3">Arahkan QR Code ke kamera</div>
+              <div class="qr-viewfinder-wrap">
+                <div id="device-qr-video" style="width:100%; max-width:420px;"></div>
+                <div class="qr-viewfinder">
+                  <div class="qr-viewfinder-frame">
+                    <span class="qr-viewfinder-corner tl"></span>
+                    <span class="qr-viewfinder-corner tr"></span>
+                    <span class="qr-viewfinder-corner bl"></span>
+                    <span class="qr-viewfinder-corner br"></span>
+                    <span class="qr-viewfinder-scanline"></span>
+                    </div>
+                    </div>
+                    <div class="qr-viewfinder-hint">📷 Posisikan QR Code di dalam kotak</div>
+                    </div>
+                    </div><div class="device-status mt-3">Arahkan QR Code ID Card ke dalam kotak</div>
           </div>
 
           <!-- Step Face -->
@@ -6009,10 +6180,10 @@ display: flex !important;
           <div id="absen-step-idle" class="absen-main-card">
             <!-- Header Section -->
             <div class="absen-header">
-              <button onclick="navigateTo('dashboard')" class="absen-back-btn" id="btn-absen-back">
+              <button onclick="goBackFromAbsen()" class="absen-back-btn" id="btn-absen-back">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-                <span>Kembali ke Dashboard</span>
-              </button>
+                <span>Kembali</span>
+                </button>
             </div>
             
             <!-- Title Section -->
@@ -6087,9 +6258,21 @@ display: flex !important;
                 <select id="absen-qr-cam-select" class="form-select"></select>
               </div>
               <div class="absen-camera-wrapper">
-                <div id="absen-qr-video" class="absen-video-container"></div>
-              </div>
-              <p class="absen-step-hint">Arahkan QR Code ke kamera</p>
+                <div class="qr-viewfinder-wrap">
+                  <div id="absen-qr-video" class="absen-video-container"></div>
+                  <div class="qr-viewfinder">
+                    <div class="qr-viewfinder-frame">
+                      <span class="qr-viewfinder-corner tl"></span>
+                      <span class="qr-viewfinder-corner tr"></span>
+                      <span class="qr-viewfinder-corner bl"></span>
+                      <span class="qr-viewfinder-corner br"></span>
+                      <span class="qr-viewfinder-scanline"></span>
+                      </div>
+                      </div>
+                      <div class="qr-viewfinder-hint">📷 Posisikan QR Code di dalam kotak</div>
+                      </div>
+                      </div>
+                      <p class="absen-step-hint">Arahkan QR Code ID Card ke dalam kotak</p>
               <button id="btn-absen-qr-cancel" class="absen-cancel-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 Batal
@@ -7961,24 +8144,33 @@ function attachRegAutosave() {
 }
 
 function setRegStep(step) {
-  RegState.currentStep = step;
-  // Update panel
-  [1, 2, 3].forEach(s => {
-    const panel = document.getElementById('reg-panel-' + s);
-    if (panel) panel.classList.toggle('active', s === step);
-  });
-  // Update step bar
-  [1, 2, 3].forEach(s => {
-    const item = document.querySelector(`.reg-step-item[data-step="${s}"]`);
-    if (!item) return;
-    item.classList.remove('active', 'done');
-    if (s < step) item.classList.add('done');
-    else if (s === step) item.classList.add('active');
-  });
-  const line1 = document.getElementById('reg-step-line-1');
-  const line2 = document.getElementById('reg-step-line-2');
-  if (line1) line1.classList.toggle('done', step > 1);
-  if (line2) line2.classList.toggle('done', step > 2);
+RegState.currentStep = step;
+// Label per step (untuk progress mobile)
+const STEP_LABELS = { 1: 'Data Diri', 2: 'Foto Profil', 3: 'Data Wajah' };
+// Update panel
+[1, 2, 3].forEach(s => {
+const panel = document.getElementById('reg-panel-' + s);
+if (panel) panel.classList.toggle('active', s === step);
+});
+// Update step bar (desktop)
+[1, 2, 3].forEach(s => {
+const item = document.querySelector(`.reg-step-item[data-step="${s}"]`);
+if (!item) return;
+item.classList.remove('active', 'done');
+if (s < step) item.classList.add('done');
+else if (s === step) item.classList.add('active');
+});
+const line1 = document.getElementById('reg-step-line-1');
+const line2 = document.getElementById('reg-step-line-2');
+if (line1) line1.classList.toggle('done', step > 1);
+if (line2) line2.classList.toggle('done', step > 2);
+// C3 FIX: sync progress bar mobile
+const stepNumEl = document.getElementById('reg-progress-step-num');
+const stepLabelEl = document.getElementById('reg-progress-step-label');
+const fillEl = document.getElementById('reg-progress-mobile-fill');
+if (stepNumEl) stepNumEl.textContent = step;
+if (stepLabelEl) stepLabelEl.textContent = STEP_LABELS[step] || '';
+if (fillEl) fillEl.style.width = ((step / 3) * 100).toFixed(2) + '%';
 }
 
 function regValidateStep1() {
@@ -9095,13 +9287,13 @@ function renderDashboardUser(data) {
       </div>
 
       <div style="display:flex; align-items:center; gap:16px; margin-top:18px; position:relative; z-index:1;">
-        <svg width="76" height="76" viewBox="0 0 76 76" style="flex-shrink:0;">
-          <circle cx="38" cy="38" r="${RING_R}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="7"/>
-          <circle cx="38" cy="38" r="${RING_R}" fill="none" stroke="${ringColor}" stroke-width="7" stroke-linecap="round"
-            stroke-dasharray="${RING_CIRC}" stroke-dashoffset="${ringOffset}" transform="rotate(-90 38 38)" style="transition:stroke-dashoffset 0.6s ease;"/>
-          <text x="38" y="35" text-anchor="middle" fill="white" font-size="15" font-weight="700">${jamDatang ? jamDatang.waktu : '--:--'}</text>
-          <text x="38" y="48" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="8">DATANG</text>
-        </svg>
+        <svg class="dash-user-ring-svg" width="76" height="76" viewBox="0 0 76 76" style="flex-shrink:0;" aria-label="Status absen datang hari ini">
+<circle cx="38" cy="38" r="${RING_R}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="7"/>
+<circle cx="38" cy="38" r="${RING_R}" fill="none" stroke="${ringColor}" stroke-width="7" stroke-linecap="round"
+stroke-dasharray="${RING_CIRC}" stroke-dashoffset="${ringOffset}" transform="rotate(-90 38 38)" style="transition:stroke-dashoffset 0.6s ease;"/>
+<text x="38" y="35" text-anchor="middle" fill="white" font-size="15" font-weight="700">${jamDatang ? jamDatang.waktu : '--:--'}</text>
+<text x="38" y="48" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="8">DATANG</text>
+</svg>
         <div style="flex:1; min-width:0;">
           <div style="font-size:13px; opacity:0.7; margin-bottom:6px;">Status pulang</div>
           ${pulangStatusHtml}
@@ -9604,18 +9796,32 @@ async function saveUpdateWajah() {
 }
 
 async function generateIdCardManual() {
-  try {
-    const res = await apiCallWithToken('generateIdCard', {});
-    showAlert('ID Card berhasil di-generate ulang dari template', 'success');
-    if(res.url && profilData) {
-      profilData.URL_ID_Card_PDF = res.url;
-      profilData.URL_ID_Card_Depan = res.urlDepan || '';
-      profilData.URL_ID_Card_Belakang = res.urlBelakang || '';
-    }
-    renderProfil();
-  } catch(e) {
-    showAlert('Gagal generate ID Card: ' + e);
-  }
+// C4 FIX: Konfirmasi eksplisit sebelum proses yang memakan waktu ~30 detik.
+// Mencegah double submission (user klik berulang) dan memberi ekspektasi waktu.
+const confirmed = window.confirm(
+'Generate ID Card akan memakan waktu sekitar 30 detik.\n\n' +
+'File PDF baru akan dibuat di Google Drive Anda.\n\n' +
+'Lanjutkan?'
+);
+if (!confirmed) return;
+// Cari tombol yang sedang aktif (di preview area atau di action grid)
+const btn = document.querySelector('#id-card-preview-area .btn-primary')
+|| document.querySelector('.profil-idcard-actions .btn-primary');
+setButtonLoading(btn, true, 'Membuat ID Card...');
+try {
+const res = await apiCallWithToken('generateIdCard', {});
+showAlert('✅ ID Card berhasil dibuat', 'success');
+if(res.url && profilData) {
+profilData.URL_ID_Card_PDF = res.url;
+profilData.URL_ID_Card_Depan = res.urlDepan || '';
+profilData.URL_ID_Card_Belakang = res.urlBelakang || '';
+}
+renderProfil();
+} catch(e) {
+showAlert('Gagal generate ID Card: ' + e, 'danger');
+} finally {
+setButtonLoading(btn, false);
+}
 }
 
 // ==================== MANAJEMEN USER ====================
@@ -10455,30 +10661,37 @@ function renderAbsensiTable(data) {
         <div class="mobile-data-card" data-crud-id="${escapeHtml(a.ID_Absen)}">
           <div class="mobile-data-card-select-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           <div class="mobile-data-card-top">
-            <div>
-              <div class="mobile-data-card-title">${escapeHtml(a.namaLengkap)}</div>
-              <div class="mobile-data-card-subtitle">${escapeHtml(a.jabatanDivisi||'-')} &middot; ${escapeHtml(a.sppg||'-')}</div>
-            </div>
-            <span class="badge ${statusValid ? 'badge-green' : 'badge-red'}">${escapeHtml(a.Status_Validasi)}</span>
-          </div>
-          <div class="mobile-data-card-row">
-            <div class="mobile-data-card-field">
-              <span class="mobile-data-card-label">Tanggal</span>
-              <span class="mobile-data-card-value">${formatDate(a.Tanggal)}</span>
-            </div>
-            <div class="mobile-data-card-field">
-              <span class="mobile-data-card-label">Jenis</span>
-              <span class="mobile-data-card-value" style="color:${jenisColor};">${escapeHtml(a.Jenis_Absen)}</span>
-            </div>
-            <div class="mobile-data-card-field">
-              <span class="mobile-data-card-label">Waktu</span>
-              <span class="mobile-data-card-value">${waktuStr}</span>
-            </div>
-            <div class="mobile-data-card-field">
-              <span class="mobile-data-card-label">Skor Wajah</span>
-              <span class="mobile-data-card-value" style="color:${skorColor};">${skorNum !== null ? skorNum.toFixed(1) + '%' : '-'}</span>
-            </div>
-          </div>
+<div style="flex:1; min-width:0;">
+<div class="mobile-data-card-title">${escapeHtml(a.namaLengkap)}</div>
+<div class="mobile-data-card-subtitle">
+<span class="badge badge-blue" style="font-size:0.6rem; padding:0.1rem 0.4rem; margin-right:0.25rem; vertical-align:middle;">${escapeHtml(a.role||'-')}</span>
+${escapeHtml(a.jabatanDivisi||'-')}
+</div>
+</div>
+<span class="badge ${statusValid ? 'badge-green' : 'badge-red'}">${escapeHtml(a.Status_Validasi)}</span>
+</div>
+<div class="mobile-data-card-row">
+<div class="mobile-data-card-field">
+<span class="mobile-data-card-label">Tanggal</span>
+<span class="mobile-data-card-value">${formatDate(a.Tanggal)}</span>
+</div>
+<div class="mobile-data-card-field">
+<span class="mobile-data-card-label">Jenis</span>
+<span class="mobile-data-card-value" style="color:${jenisColor};">${escapeHtml(a.Jenis_Absen)}</span>
+</div>
+<div class="mobile-data-card-field">
+<span class="mobile-data-card-label">Waktu</span>
+<span class="mobile-data-card-value">${waktuStr}</span>
+</div>
+<div class="mobile-data-card-field">
+<span class="mobile-data-card-label">Skor Wajah</span>
+<span class="mobile-data-card-value" style="color:${skorColor};">${skorNum !== null ? skorNum.toFixed(1) + '%' : '-'}</span>
+</div>
+<div class="mobile-data-card-field">
+<span class="mobile-data-card-label">SPPG</span>
+<span class="mobile-data-card-value">${escapeHtml(a.sppg||'-')}</span>
+</div>
+</div>
         </div>
       `;
     }).join('');
@@ -10916,6 +11129,21 @@ function getCurrentLocation() {
   });
 }
 
+// C1 FIX: Tombol "Kembali" di halaman Absen Manual memakai history.back()
+// dengan fallback ke dashboard. Ini menghormati mental model universal
+// tombol Back (user berharap kembali ke halaman sebelumnya, bukan paksa ke dashboard).
+function goBackFromAbsen() {
+// Jika ada history browser (user masuk dari dashboard/profil/dll), kembali ke sana
+if (window.history.length > 1) {
+// Simpan flag agar navigateTo berikutnya tidak menimpa history
+try { window._skipSaveLastPage = true; } catch(e) {}
+window.history.back();
+} else {
+// Fallback: tidak ada history (deep link / buka langsung), baru ke dashboard
+navigateTo('dashboard');
+}
+}
+
 function initAbsenManual() {
   resetAbsenFlow();
 
@@ -11162,12 +11390,30 @@ async function startAbsenSelfFaceScan() {
               }
             } else if(attempts > 160){
               done=true;clearInterval(interval);stopVideo();
-              const pesanGagal = skor < 20
-                ? `Wajah tidak dikenali (skor: ${skorPct}%). Pastikan pencahayaan cukup, wajah menghadap kamera, dan Anda sudah mendaftarkan data wajah di menu Profil.`
-                : skor < FACE_MATCH_THRESHOLD * 0.75
-                ? `Wajah kurang cocok (skor: ${skorPct}%). Coba perbaiki pencahayaan, lepas kacamata, atau perbarui data wajah di menu Profil.`
-                : `Skor kecocokan belum cukup (${skorPct}% dari min. ${FACE_MATCH_THRESHOLD}%). Coba lagi dengan pencahayaan lebih baik atau perbarui data wajah di Profil.`;
-              showAbsenSelfResult(false, pesanGagal, skor);
+              // C6 FIX: Pesan error dibuat ACTIONABLE — user tahu persis apa yang harus dilakukan.
+// Bukan hanya menampilkan angka skor mentah, tapi memberi checklist perbaikan
+// + tombol langsung ke halaman Profil untuk update data wajah.
+const pesanGagalHtml = `
+<div style="text-align:left; font-size:0.875rem; line-height:1.55;">
+<div style="font-weight:700; color:var(--danger); margin-bottom:0.5rem;">
+⚠️ Wajah belum terverifikasi (skor: ${skorPct}%, dibutuhkan min. ${FACE_MATCH_THRESHOLD}%)
+</div>
+<div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:var(--radius); padding:0.75rem 0.875rem; margin-bottom:0.75rem;">
+<div style="font-weight:700; color:#9a3412; font-size:0.8125rem; margin-bottom:0.4rem;">💡 Tips agar berhasil:</div>
+<ul style="margin:0; padding-left:1.1rem; color:#7c2d12; font-size:0.8125rem;">
+<li style="margin-bottom:0.25rem;">Pastikan wajah <strong>terkena cahaya cukup</strong> (hindari backlight)</li>
+<li style="margin-bottom:0.25rem;"><strong>Lepas kacamata</strong>, topi, atau masker</li>
+<li style="margin-bottom:0;">Posisikan wajah <strong>tepat di tengah oval</strong> & tersenyum sedikit</li>
+</ul>
+</div>
+${skor < 30 ? `
+<div style="background:#fef2f2; border:1px solid #fecaca; border-radius:var(--radius); padding:0.625rem 0.875rem; font-size:0.8125rem; color:#991b1b;">
+<strong>⚠️ Skor sangat rendah.</strong> Kemungkinan data wajah Anda belum terdaftar atau sudah berubah. Silakan perbarui data wajah di menu Profil.
+</div>
+` : ''}
+</div>
+`;
+showAbsenSelfResult(false, pesanGagalHtml, skor, true);
             }
           }
           break;
@@ -11180,20 +11426,17 @@ async function startAbsenSelfFaceScan() {
   }
 }
 
-function showAbsenSelfResult(success, message, skorTerakhir) {
-  $('#absen-step-face-self').classList.add('hidden');
-  $('#absen-step-result').classList.remove('hidden');
-
-  const iconEl = $('#absen-result-icon');
-  const textEl = $('#absen-result-text');
-
-  iconEl.textContent = success ? '✅' : '❌';
-  textEl.className = success ? 'text-success' : 'text-danger';
-
-  if(success) {
-    textEl.textContent = message;
-    setTimeout(resetAbsenFlow, 5000);
-  } else {
+function showAbsenSelfResult(success, message, skorTerakhir, messageIsHtml) {
+$('#absen-step-face-self').classList.add('hidden');
+$('#absen-step-result').classList.remove('hidden');
+const iconEl = $('#absen-result-icon');
+const textEl = $('#absen-result-text');
+iconEl.textContent = success ? '✅' : '❌';
+textEl.className = success ? 'text-success' : 'text-danger';
+if(success) {
+textEl.textContent = message;
+setTimeout(resetAbsenFlow, 5000);
+} else {
     // Tampilkan pesan utama + detail skor (jika ada) + tombol coba lagi
     const skorHtml = (skorTerakhir !== undefined && skorTerakhir !== null)
       ? `<div style="margin-top:0.75rem; background:var(--danger-light); border:1px solid #fca5a5; border-radius:var(--radius); padding:0.625rem 0.875rem; font-size:0.8125rem; color:#991b1b;">
@@ -11205,10 +11448,22 @@ function showAbsenSelfResult(success, message, skorTerakhir) {
          </div>`
       : '';
 
-    textEl.innerHTML = `<span>⚠️ ${escapeHtml(message)}</span>${skorHtml}`;
-
-    // Tombol coba ulang — tidak perlu tunggu 5 detik
-    const btnOk = document.getElementById('btn-absen-result-ok');
+    // C6 FIX: Jika message sudah berupa HTML (pesan actionable), render langsung;
+// jika tidak, bungkus dengan escapeHtml seperti semula untuk mencegah XSS.
+const messageRendered = messageIsHtml ? message : `<span>⚠️ ${escapeHtml(message)}</span>`;
+textEl.innerHTML = messageRendered + skorHtml;
+// C6 FIX: Tambahkan tombol "Update Data Wajah" langsung di hasil gagal
+// agar user tidak perlu mencari-cari menu Profil secara manual.
+const updateWajahBtnHtml = `
+<button onclick="navigateTo('profil'); setTimeout(()=>{ if(typeof showUpdateWajahModal==='function') showUpdateWajahModal(); }, 400);"
+class="btn btn-outline" style="margin-top:0.75rem; width:100%; border-color:var(--primary); color:var(--primary); font-weight:600;">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:0.35rem;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+Update Data Wajah di Profil
+</button>
+`;
+textEl.insertAdjacentHTML('beforeend', updateWajahBtnHtml);
+// Tombol coba ulang — tidak perlu tunggu 5 detik
+const btnOk = document.getElementById('btn-absen-result-ok');
     if(btnOk) {
       // Ganti teks tombol menjadi "Coba Lagi" saat gagal
       const origHtml = btnOk.innerHTML;
