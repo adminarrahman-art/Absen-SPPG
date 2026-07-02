@@ -6432,7 +6432,7 @@ const PWA_ICON_180 = 'https://lh3.googleusercontent.com/d/1FLInXFlendmnziCYZiPY6
 // ==================== PWA: MANIFEST & SERVICE WORKER ====================
 // PENTING: Naikkan nilai ini setiap kali deploy versi baru (boleh tanggal/angka apa saja, asal berubah).
 // Ini memaksa SW & Cache lama di HP otomatis terhapus + reload sekali tanpa user perlu clear cache manual.
-const APP_VERSION = '2026-06-30-04';
+const APP_VERSION = '2026-07-02-01';
 
 (function setupPWA() {
   // Ikon resmi Absensi (embedded base64 WebP, tidak bergantung koneksi eksternal)
@@ -7325,7 +7325,11 @@ function navigateTo(page) {
   CrudState.selectedIds.clear();
   CrudState.mobileSelectionMode = false;
   const fabEl = document.getElementById('crud-batch-fab');
-  if(fabEl) fabEl.classList.remove('show');
+  if(fabEl) {
+    fabEl.classList.remove('show');
+    const fabLabelEl = document.getElementById('crud-batch-fab-label');
+    if(fabLabelEl) fabLabelEl.textContent = '0 item dipilih';
+  }
   document.querySelectorAll('.mobile-data-card.crud-selection-mode, .mobile-data-card.crud-card-selected')
     .forEach(c => { c.classList.remove('crud-selection-mode'); c.classList.remove('crud-card-selected'); });
 
@@ -9805,6 +9809,9 @@ function renderDataKaryawanView(data) {
       </div>
     `).join('');
     cardContainer.style.display = '';
+    CrudState.currentMenu = 'users';
+    CrudState.selectedIds.clear();
+    crudUpdateBatchFab();
     return;
   }
 
