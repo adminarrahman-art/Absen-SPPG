@@ -7770,9 +7770,9 @@ async function initRegister() {
   rebind('btn-reg-next-1', regValidateStep1);
   rebind('btn-reg-back-1', () => setRegStep(1));
   rebind('btn-reg-next-2', regGoToStep3);
-  rebind('btn-reg-skip-foto', () => { RegState.fotoBase64 = null; regGoToStep3(); });
+  rebind('btn-reg-skip-foto', () => { RegState.fotoBase64 = null; saveRegDraftMedia(); regGoToStep3(); });
   rebind('btn-reg-back-2', () => { stopRegWajahScan(); setRegStep(2); });
-  rebind('btn-reg-skip-wajah', () => { RegState.faceDescriptor = null; stopRegWajahScan(); });
+  rebind('btn-reg-skip-wajah', () => { RegState.faceDescriptor = null; saveRegDraftMedia(); stopRegWajahScan(); });
   rebind('btn-reg-start-wajah', startRegWajahScan);
   rebind('btn-reg-ulang-wajah', () => { RegState.faceDescriptor = null; resetRegWajahUI(); startRegWajahScan(); });
   rebind('btn-reg-foto-kamera', openRegFotoKamera);
@@ -7830,9 +7830,16 @@ const REG_DRAFT_FIELDS = [
   'reg-gaji', 'reg-bank', 'reg-rekening'
 ];
 
+// Simpan draft HANYA field teks (dipanggil setiap ketikan/oninput).
+// Foto & face descriptor SENGAJA tidak ikut ditulis di sini karena bisa
+// berukuran ratusan KB — menulis ulang setiap ketikan huruf akan lag dan
+// berisiko QuotaExceededError. Media disimpan terpisah via saveRegDraftMedia().
 function saveRegDraft() {
   try {
-    const draft = { step: RegState.currentStep, fields: {} };
+    const raw = localStorage.getItem(REG_DRAFT_KEY);
+    const existing = raw ? JSON.parse(raw) : {};
+
+    const draft = { ...existing, step: RegState.currentStep, fields: {} };
     REG_DRAFT_FIELDS.forEach(id => {
       const el = document.getElementById(id);
       if (el) draft.fields[id] = el.value;
@@ -7841,14 +7848,34 @@ function saveRegDraft() {
     draft.jenisKelamin = jkEl ? jkEl.value : '';
     const setujuEl = document.getElementById('reg-setuju');
     draft.setuju = setujuEl ? setujuEl.checked : false;
-    // Foto & face descriptor ikut disimpan agar step 2/3 tidak perlu diulang
-    draft.fotoBase64 = RegState.fotoBase64 || null;
-    draft.fotoOriginalBase64 = RegState.fotoOriginalBase64 || null;
-    draft.faceDescriptor = RegState.faceDescriptor || null;
     draft.savedAt = Date.now();
     localStorage.setItem(REG_DRAFT_KEY, JSON.stringify(draft));
   } catch (e) {
-    console.error('[REG_DRAFT] Gagal menyimpan draft:', e);
+    console.error('[REG_DRAFT] Gagal menyimpan draft teks:', e);
+    if (e && e.name === 'QuotaExceededError') {
+      showAlert('Penyimpanan draft penuh. Draft teks mungkin tidak tersimpan otomatis, tapi Anda tetap bisa melanjutkan registrasi.', 'warning');
+    }
+  }
+}
+
+// Simpan draft KHUSUS foto profil & face descriptor. Dipanggil hanya saat
+// foto selesai di-crop atau scan wajah berhasil (bukan setiap ketikan),
+// supaya localStorage tidak ditulis ulang berat berulang kali.
+function saveRegDraftMedia() {
+  try {
+    const raw = localStorage.getItem(REG_DRAFT_KEY);
+    const existing = raw ? JSON.parse(raw) : { fields: {}, step: RegState.currentStep };
+
+    existing.fotoBase64 = RegState.fotoBase64 || null;
+    existing.fotoOriginalBase64 = RegState.fotoOriginalBase64 || null;
+    existing.faceDescriptor = RegState.faceDescriptor || null;
+    existing.savedAt = Date.now();
+    localStorage.setItem(REG_DRAFT_KEY, JSON.stringify(existing));
+  } catch (e) {
+    console.error('[REG_DRAFT] Gagal menyimpan draft media:', e);
+    if (e && e.name === 'QuotaExceededError') {
+      showAlert('Penyimpanan browser penuh sehingga foto/data wajah draft tidak dapat disimpan otomatis. Registrasi tetap bisa dilanjutkan, namun jika halaman di-refresh, foto/wajah perlu diambil ulang.', 'warning');
+    }
   }
 }
 
@@ -8077,6 +8104,7 @@ function _updateRegFotoPreview(croppedBase64) {
     status.style.color = 'var(--success)';
     status.style.fontWeight = '600';
   }
+  saveRegDraftMedia();
   // Tampilkan tombol "Edit Foto" jika belum ada
   let btnEdit = document.getElementById('btn-reg-edit-foto');
   if (!btnEdit) {
@@ -8162,7 +8190,6 @@ async function startRegWajahScan() {
     updateScanSteps('reg-wajah-scan-steps', 'reg-wajah-hint-box', 'detect', 'Posisikan wajah di dalam oval');
 
     const guide = document.getElementById('reg-wajah-face-guide');
-    const SMILE_THR_REG = 0.70;
     let rPhase = 'center', attempts = 0, done = false;
 
     function isFaceCenteredReg(det, vW, vH) {
@@ -8213,7 +8240,7 @@ async function startRegWajahScan() {
           if (guide) guide.className = 'face-guide liveness-warn';
           if (statusBox) { statusBox.className = 'reg-wajah-status-box warning'; statusBox.textContent = '🙂 Sempurna! Sekarang tersenyum sedikit'; }
           updateScanSteps('reg-wajah-scan-steps', 'reg-wajah-hint-box', 'smile', '🙂 Sempurna! Sekarang tersenyum sedikit');
-          if (smileScore >= SMILE_THR_REG) rPhase = 'done';
+          if (smileScore >= SMILE_THRESHOLD) rPhase = 'done';
           break;
         case 'done':
           done = true;
@@ -8230,6 +8257,7 @@ async function startRegWajahScan() {
           if (resultEl) resultEl.classList.remove('hidden');
           const btnUlang2 = document.getElementById('btn-reg-ulang-wajah');
           if (btnUlang2) btnUlang2.classList.remove('hidden');
+          saveRegDraftMedia();
           break;
       }
     }, 500);
@@ -9492,7 +9520,6 @@ async function startWajahCapture(videoId, canvasId, statusId) {
       return Math.abs(cx-vW/2)<vW*0.25&&Math.abs(cy-vH/2)<vH*0.25&&b.width>vW*0.18&&b.width<vW*0.88;
     }
 
-    const SMILE_THR = 0.70;
     let wPhase='center', captured=false, attempts=0;
 
     const interval = setInterval(async () => {
@@ -9531,7 +9558,7 @@ async function startWajahCapture(videoId, canvasId, statusId) {
           if(guide) guide.className='face-guide liveness-warn';
           if(statusBox) { statusBox.className='liveness-status-box warn'; statusBox.textContent='🙂 Lihat kamera dan tersenyum'; }
           if(statusEl) statusEl.textContent='Silakan lihat kamera dan tersenyum';
-          if(smileScore >= SMILE_THR) wPhase='done';
+          if(smileScore >= SMILE_THRESHOLD) wPhase='done';
           break;
         case 'done':
           if(!captured) {
@@ -10690,7 +10717,10 @@ async function handleQrScanned(idCardUnik) {
     showDeviceResult(false, 'Error: ' + e);
   }
 }
-
+// Ambang batas skor senyum (0-1) dari faceapi expressions.happy, dipakai
+// seragam di semua alur liveness (registrasi, update wajah, device absen,
+// absen mandiri, absen via QR) agar UX konsisten.
+const SMILE_THRESHOLD = 0.70;
 const FACE_MATCH_THRESHOLD = 60;
 
 async function startFaceScan() {
@@ -10734,7 +10764,6 @@ async function startFaceScan() {
       return Math.abs(cx-vW/2)<vW*0.28&&Math.abs(cy-vH/2)<vH*0.28&&b.width>vW*0.16&&b.width<vW*0.90;
     }
 
-    const SMILE_THR_D = 0.70;
     let dPhase='center', attempts=0, done=false;
 
     const interval = setInterval(async () => {
@@ -10772,7 +10801,7 @@ async function startFaceScan() {
           if(guide) guide.className='face-guide liveness-warn';
           if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='🙂 Lihat kamera dan tersenyum';}
           if(statusEl) statusEl.textContent='Silakan lihat kamera dan tersenyum';
-          if(smileScore >= SMILE_THR_D) dPhase='done';
+          if(smileScore >= SMILE_THRESHOLD) dPhase='done';
           break;
         case 'done':
           if(guide) guide.className='face-guide liveness-ok';
@@ -11032,7 +11061,6 @@ async function startAbsenSelfFaceScan() {
       return Math.abs(cx-vW/2)<vW*0.28&&Math.abs(cy-vH/2)<vH*0.28&&b.width>vW*0.16&&b.width<vW*0.90;
     }
 
-    const SMILE_THR_S = 0.70;
     let sPhase='center', attempts=0, done=false;
 
     updateScanSteps('absen-self-scan-steps', 'absen-self-hint-box', 'detect', 'Posisikan wajah di dalam oval');
@@ -11075,7 +11103,7 @@ async function startAbsenSelfFaceScan() {
           if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='🙂 Lihat kamera dan tersenyum';}
           if(statusEl) statusEl.textContent='Silakan lihat kamera dan tersenyum';
           updateScanSteps('absen-self-scan-steps', 'absen-self-hint-box', 'smile', '🙂 Sempurna! Sekarang tersenyum sedikit');
-          if(smileScore >= SMILE_THR_S) sPhase='done';
+          if(smileScore >= SMILE_THRESHOLD) sPhase='done';
           break;
         case 'done':
           if(guide) guide.className='face-guide liveness-ok';
@@ -11294,7 +11322,6 @@ async function startAbsenFaceScan() {
       return Math.abs(cx-vW/2)<vW*0.28&&Math.abs(cy-vH/2)<vH*0.28&&b.width>vW*0.16&&b.width<vW*0.90;
     }
 
-    const SMILE_THR_A = 0.80;
     let aPhase='center', attempts=0, done=false;
 
     const interval = setInterval(async () => {
@@ -11332,7 +11359,7 @@ async function startAbsenFaceScan() {
           if(guide) guide.className='face-guide liveness-warn';
           if(statusBox){statusBox.className='liveness-status-box warn';statusBox.textContent='🙂 Lihat kamera dan tersenyum';}
           if(statusEl) statusEl.textContent='Silakan lihat kamera dan tersenyum';
-          if(smileScore >= SMILE_THR_A) aPhase='done';
+          if(smileScore >= SMILE_THRESHOLD) aPhase='done';
           break;
         case 'done':
           if(guide) guide.className='face-guide liveness-ok';
@@ -12584,7 +12611,17 @@ function crudBindMobileCardEvents(menu) {
 // dari getAllUsers supaya detail/edit/hapus tetap konsisten dengan menu 'users'.
 async function crudOpenDetailUserFromKaryawan(idUser) {
   try {
-    const res = await apiCallWithToken('getAllUsers', {});
+    // Manfaatkan cache getAllUsers yang sudah ada (TTL 60 detik) agar klik
+    // baris berulang tidak selalu menembak ulang seluruh data user ke server.
+    const cacheKey = _cacheKey('getAllUsers', { token: AppState.token });
+    const cached = _apiCache[cacheKey];
+    const ttl = _API_CACHE_TTL['getAllUsers'] || 0;
+    let res;
+    if (cached && ttl > 0 && (Date.now() - cached.ts) < ttl) {
+      res = cached.data;
+    } else {
+      res = await apiCallWithToken('getAllUsers', {});
+    }
     CrudState.currentMenu = 'users';
     CrudState.currentData = res.users || [];
     crudOpenDetail('users', idUser);
